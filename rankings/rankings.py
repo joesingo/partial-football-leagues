@@ -1,15 +1,9 @@
 from dataclasses import dataclass
-from os import path
-from pathlib import Path
 from typing import Dict
-import json
 
 import numpy as np
 import numpy.linalg as linalg
 from sympy import Matrix
-
-HERE = path.abspath(path.dirname(__file__))
-RESULTS_PATH = Path(HERE).parent / "data" / "results.json"
 
 @dataclass
 class Club:
@@ -24,6 +18,7 @@ class Club:
     lost: int = 0
     goals_for: int = 0
     goals_againt: int = 0
+    home_games: int = 0
 
     @property
     def played(self):
@@ -37,7 +32,7 @@ class Club:
     def points(self):
         return 3 * self.won + self.drawn
 
-    def register_match(self, scored, conceded):
+    def register_match(self, scored, conceded, home=True):
         self.goals_for += scored
         self.goals_againt += conceded
         if scored > conceded:
@@ -46,6 +41,9 @@ class Club:
             self.lost += 1
         else:
             self.drawn += 1
+
+        if home:
+            self.home_games += 1
 
 class League:
     """
@@ -72,10 +70,9 @@ class League:
             club = Club(name=name, club_id=club_id)
             self.clubs.append(club)
             self.club_ids[name] = club_id
-        num_clubs = len(self.clubs)
 
         # create tournament matrix
-        self.results_matrix = np.zeros((num_clubs, num_clubs))
+        self.results_matrix = np.zeros((self.num_clubs, self.num_clubs))
         for match_dict in results:
             home = self.clubs[self.club_ids[match_dict["home"]]]
             away = self.clubs[self.club_ids[match_dict["away"]]]
@@ -83,8 +80,12 @@ class League:
 
             # record the match details in the Club objects
             home_goals, away_goals = scores
-            home.register_match(scored=home_goals, conceded=away_goals)
-            away.register_match(scored=away_goals, conceded=home_goals)
+            home.register_match(
+                scored=home_goals, conceded=away_goals, home=True
+            )
+            away.register_match(
+                scored=away_goals, conceded=home_goals, home=False
+            )
 
             # add the scores to the tournament matrix
             home_points = self.home_weight * home_goals
@@ -99,6 +100,9 @@ class League:
                 if name not in seen:
                     yield name
                     seen[name] = True
+    @property
+    def num_clubs(self):
+        return len(self.clubs)
 
 class RankingMethod:
     """
@@ -115,6 +119,21 @@ class PointsRanking(RankingMethod):
         return sorted(
             league.clubs,
             key=lambda c: (c.points, c.goal_difference, c.goals_for),
+            reverse=True
+        )
+
+class AveragePointsRanking(RankingMethod):
+    """
+    Rank by average points across the games played so far
+    """
+    def rank(self, league):
+        return sorted(
+            league.clubs,
+            key=lambda c: (
+                c.points / c.played,
+                c.goal_difference,
+                c.goals_for / c.played
+            ),
             reverse=True
         )
 
@@ -163,14 +182,19 @@ class TournamentRanking(RankingMethod):
         Return a solution to a @ x = b
         """
         sol, params = Matrix(a).gauss_jordan_solve(Matrix(b))
-        x = sol.xreplace({t: free_val for t in params})
+
+        # check that the dimension of the solution space is 0 (unique solution)
+        # or 1 (unique solution given a value for the free variable)
+        assert len(sol.free_symbols) <= 1, "no unique solution"
+
+        x = sol.xreplace({t: free_val for t in sol.free_symbols})
         return np.array(x).astype("float64").T.flatten()
 
 class ScoresRanking(TournamentRanking):
     def _rank(self, A):
         return self.get_average_scores(A)
 
-class NeustadtlRanking(TournamentRanking):
+class Neustadtl(TournamentRanking):
     def _rank(self, A):
         _, m, _ = self.get_matches(A)
         s = self.get_average_scores(A)
@@ -236,24 +260,3 @@ class GeneralisedRowSum(TournamentRanking):
         X = np.eye(n) + eps * C
         x = self.solve_linear_system(X, (1 + m_hat * n * eps) * s_star)
         return x / (m_hat * (n - 1))
-
-def all_subclasses(cls):
-    for child in cls.__subclasses__():
-        yield child
-        yield from all_subclasses(child)
-
-def main():
-    with open(RESULTS_PATH) as f:
-        results = json.load(f)
-        l = League(results)
-        for r in all_subclasses(RankingMethod):
-            # skip the base class
-            if r == TournamentRanking:
-                continue
-            ranking = r().rank(l)
-            print(r.__name__)
-            print([c.name for c in ranking])
-            print("")
-
-if __name__ == "__main__":
-    main()

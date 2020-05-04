@@ -2,13 +2,14 @@
 TODO:
 
 test league table
+test average points
 test tournament -> club ranking method
 """
 import numpy as np
 
 from rankings import (
     ScoresRanking,
-    NeustadtlRanking,
+    Neustadtl,
     FairBets,
     Buchholz,
     RecursivePerformance,
@@ -21,7 +22,7 @@ def test_ranking_methods():
     A = np.array([[0, 4, 5], [1, 0, 25], [0, 1, 0]])
     expected = (
         (ScoresRanking, np.array([0.9, 0.839, 0.032])),
-        (NeustadtlRanking, np.array([0.352, 0.055, 0.027])),
+        (Neustadtl, np.array([0.352, 0.055, 0.027])),
         (FairBets, np.array([0.801, 0.192, 0.006])),
         (Buchholz, np.array([1.335, 1.011, 0.881])),
         (RecursivePerformance, np.array([1.764, 0.491, -2.255])),
