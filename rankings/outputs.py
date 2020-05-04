@@ -52,7 +52,7 @@ class OutputCreator:
     @output(ext="html")
     def tournament_points_based(self, outfile):
         for line in self.tournament_table(self.league):
-            outfile.write(line)
+            outfile.write(line + "\n")
 
     @output(ext="html")
     def tournament_goals_based(self, outfile):
@@ -60,8 +60,18 @@ class OutputCreator:
             outfile.write(line)
 
     def tournament_table(self, league):
-        yield ("<style type='text/css'>table{border-collapse:collapse;}td{"
-               "border:1px solid black;}</style>")
+        n = league.num_clubs
+        min_score = min(
+            league.results_matrix[i, j]
+            for i in range(n) for j in range(n) if j != i
+        )
+        max_score = max(
+            league.results_matrix[i, j]
+            for i in range(n) for j in range(n) if j != i
+        )
+
+        yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
+               "border:1px solid black;padding:0.7em;text-align:center;}</style>")
         yield "<table>"
         yield "<thead>"
         yield "<tr>"
@@ -75,8 +85,27 @@ class OutputCreator:
             yield "<tr>"
             yield f"<th>{c1.abbrev}</th>"
             for c2 in league.clubs:
-                score = int(league.results_matrix[c1.club_id, c2.club_id])
-                yield f"<td>{score}</td>"
+                score = None
+                bg = None
+                fg = None
+                if c1 == c2:
+                    score = "-"
+                    bg = 255
+                    fg = 0
+                else:
+                    raw_score = league.results_matrix[c1.club_id, c2.club_id]
+                    score = int(raw_score)
+                    relative_score = (
+                        (raw_score - min_score) / (max_score - min_score)
+                    )
+                    bg = 255 - int(relative_score * 255)
+                    fg = 255 - bg
+
+                bg_colour = f"rgb({bg}, {bg}, {bg})"
+                fg_colour = f"rgb({fg}, {fg}, {fg})"
+                yield (f"<td style='background: {bg_colour}'>"
+                       f"<span style='background:white'>{score}</span></td>")
+
             yield "</tr>"
         yield "</tbody>"
         yield "</table>"
