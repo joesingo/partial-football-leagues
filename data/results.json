@@ -172,7 +172,6 @@
     {"home": "Aston Villa", "away": "FC Southampton", "result": [1, 3]},
     {"home": "FC Everton", "away": "FC Arsenal", "result": [0, 0]},
     {"home": "Newcastle United", "away": "Crystal Palace", "result": [1, 0]},
-    {"home": "West Ham United", "away": "FC Liverpool", "result": [0, 2]},
     {"home": "Manchester City", "away": "Leicester City", "result": [3, 1]},
     {"home": "Norwich City", "away": "Wolverhampton Wanderers", "result": [1, 2]},
     {"home": "AFC Bournemouth", "away": "FC Burnley", "result": [0, 1]},

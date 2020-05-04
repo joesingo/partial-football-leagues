@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 
 from rankings import (
     League,
+    GoalBasedLeague,
     RankingMethod,
     PointsRanking,
     TournamentRanking,

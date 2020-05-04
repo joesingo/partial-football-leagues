@@ -18,7 +18,7 @@ class Club:
     drawn: int = 0
     lost: int = 0
     goals_for: int = 0
-    goals_againt: int = 0
+    goals_against: int = 0
     home_games: int = 0
 
     @property
@@ -27,7 +27,7 @@ class Club:
 
     @property
     def goal_difference(self):
-        return self.goals_for - self.goals_againt
+        return self.goals_for - self.goals_against
 
     @property
     def points(self):
@@ -35,7 +35,7 @@ class Club:
 
     def register_match(self, scored, conceded, home=True):
         self.goals_for += scored
-        self.goals_againt += conceded
+        self.goals_against += conceded
         if scored > conceded:
             self.won += 1
         elif scored < conceded:
@@ -51,11 +51,6 @@ class League:
     Representation of a (partial) league. Consists of a collection of Clubs and
     the tournament results matrix
     """
-    # weights for home and away games, in case we want to treat these
-    # differently
-    home_weight: float = 1
-    away_weight: float = 1
-
     clubs: [Club]
     club_ids: Dict[str, int]
 
@@ -89,10 +84,25 @@ class League:
             )
 
             # add the scores to the tournament matrix
-            home_points = self.home_weight * home_goals
-            away_points = self.away_weight * away_goals
-            self.results_matrix[home.club_id, away.club_id] = home_points
-            self.results_matrix[away.club_id, home.club_id] = away_points
+            home_points, away_points = self.get_tournament_scores(
+                home_goals, away_goals
+            )
+            self.results_matrix[home.club_id, away.club_id] += home_points
+            self.results_matrix[away.club_id, home.club_id] += away_points
+
+        print(self.results_matrix)
+
+    def get_tournament_scores(self, home_goals, away_goals):
+        """
+        Given the results of a match, return the points to assign in the
+        results matrix to the home and away teams respectively
+        """
+        if home_goals > away_goals:
+            return (3, 0)
+        elif home_goals < away_goals:
+            return (0, 3)
+        else:
+            return (1, 1)
 
     def get_club_names(self, results):
         seen = {}
@@ -104,6 +114,13 @@ class League:
     @property
     def num_clubs(self):
         return len(self.clubs)
+
+class GoalBasedLeague(League):
+    """
+    Use goals scored/conceded for points in the results matrix
+    """
+    def get_tournament_scores(self, home_goals, away_goals):
+        return (home_goals, away_goals)
 
 class RankingMethod:
     """
