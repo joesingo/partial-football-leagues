@@ -12,6 +12,7 @@ class Club:
     Representation of a club in a league
     """
     name: str
+    abbrev: str
     club_id: int
 
     won: int = 0
@@ -61,15 +62,16 @@ class League:
         self.club_ids = {}
 
         # init clubs
-        for name in self.get_club_names(results):
-            club_id = len(self.clubs)
-            club = Club(name=name, club_id=club_id)
+        for i, club_dict in enumerate(results["clubs"]):
+            club = Club(
+                name=club_dict["name"], club_id=i, abbrev=club_dict["abbrev"]
+            )
             self.clubs.append(club)
-            self.club_ids[name] = club_id
+            self.club_ids[club.name] = club.club_id
 
         # create tournament matrix
         self.results_matrix = np.zeros((self.num_clubs, self.num_clubs))
-        for match_dict in results:
+        for match_dict in results["matches"]:
             home = self.clubs[self.club_ids[match_dict["home"]]]
             away = self.clubs[self.club_ids[match_dict["away"]]]
             scores = match_dict["result"]
@@ -102,13 +104,6 @@ class League:
         else:
             return (1, 1)
 
-    def get_club_names(self, results):
-        seen = {}
-        for match in results:
-            for name in (match["home"], match["away"]):
-                if name not in seen:
-                    yield name
-                    seen[name] = True
     @property
     def num_clubs(self):
         return len(self.clubs)

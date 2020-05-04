@@ -39,12 +39,19 @@ def test_league():
     a = "team a"
     b = "team b"
     c = "the team of c"
-    results = [
-        {"home": a, "away": b, "result": [1, 1]},
-        {"home": a, "away": c, "result": [1, 4]},
-        {"home": b, "away": c, "result": [4, 4]},
-        {"home": c, "away": b, "result": [2, 3]},
-    ]
+    results = {
+        "clubs": [
+            {"name": a, "abbrev": "TA"},
+            {"name": b, "abbrev": "TB"},
+            {"name": c, "abbrev": "TC"},
+        ],
+        "matches": [
+            {"home": a, "away": b, "result": [1, 1]},
+            {"home": a, "away": c, "result": [1, 4]},
+            {"home": b, "away": c, "result": [4, 4]},
+            {"home": c, "away": b, "result": [2, 3]},
+        ],
+    }
     league = League(results)
 
     # check clubs
@@ -52,6 +59,7 @@ def test_league():
     a_club = league.clubs[0]
     b_club = league.clubs[1]
     c_club = league.clubs[2]
+    assert a_club.abbrev == "TA"
     assert a_club.played == 2
     assert a_club.won == 0
     assert a_club.drawn == 1
@@ -62,6 +70,7 @@ def test_league():
     assert a_club.points == 1
     assert a_club.home_games == 2
 
+    assert b_club.abbrev == "TB"
     assert b_club.played == 3
     assert b_club.won == 1
     assert b_club.drawn == 2
@@ -72,6 +81,7 @@ def test_league():
     assert b_club.points == 5
     assert b_club.home_games == 1
 
+    assert c_club.abbrev == "TC"
     assert c_club.played == 3
     assert c_club.won == 1
     assert c_club.drawn == 1

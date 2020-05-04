@@ -67,13 +67,13 @@ class OutputCreator:
         yield "<tr>"
         yield "<th></th>"
         for club in league.clubs:
-            yield f"<th>{club.name}</th>"
+            yield f"<th>{club.abbrev}</th>"
         yield "</tr>"
         yield "</thead>"
         yield "<tbody>"
         for c1 in league.clubs:
             yield "<tr>"
-            yield f"<th>{c1.name}</th>"
+            yield f"<th>{c1.abbrev}</th>"
             for c2 in league.clubs:
                 score = int(league.results_matrix[c1.club_id, c2.club_id])
                 yield f"<td>{score}</td>"
@@ -83,7 +83,6 @@ class OutputCreator:
 
     @output()
     def rankings_versus_points_ranking(self, _):
-        return
         points_ranking = PointsRanking().rank(self.league)
 
         for r in all_subclasses(RankingMethod):
