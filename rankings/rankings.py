@@ -90,8 +90,6 @@ class League:
             self.results_matrix[home.club_id, away.club_id] += home_points
             self.results_matrix[away.club_id, home.club_id] += away_points
 
-        print(self.results_matrix)
-
     def get_tournament_scores(self, home_goals, away_goals):
         """
         Given the results of a match, return the points to assign in the

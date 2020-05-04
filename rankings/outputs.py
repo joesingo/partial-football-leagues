@@ -22,34 +22,68 @@ def all_subclasses(cls):
         yield child
         yield from all_subclasses(child)
 
-def output(func):
+class output:
     """
     Decorator to mark a method as being a output generation method
     """
-    func.output = True
-    return func
+    def __init__(self, ext=None):
+        self.ext = ext
+
+    def __call__(self, func):
+        func.output = True
+        func.ext = self.ext
+        return func
 
 class OutputCreator:
-    def __init__(self, league):
-        self.league = league
+    def __init__(self, results):
+        self.league = League(results)
+        self.goal_league = GoalBasedLeague(results)
 
-    def run_all(self):
+    def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
             if not hasattr(method, "output"):
                 continue
+            ext = method.ext
+            filename = f"{name}.{ext}" if ext else name
+            p = outpath / filename
+            with p.open("w") as outfile:
+                method(outfile)
 
-            method()
+    @output(ext="html")
+    def tournament_points_based(self, outfile):
+        for line in self.tournament_table(self.league):
+            outfile.write(line)
 
-    @output
-    def home_versus_away_games(self):
-        print("played vs home vs away games:")
-        for club in self.league.clubs:
-            home = club.home_games
-            away = club.played - home
-            print(f"{club.name}: {club.played}, {home}, {away}")
+    @output(ext="html")
+    def tournament_goals_based(self, outfile):
+        for line in self.tournament_table(self.goal_league):
+            outfile.write(line)
 
-    @output
-    def rankings_versus_points_ranking(self):
+    def tournament_table(self, league):
+        yield ("<style type='text/css'>table{border-collapse:collapse;}td{"
+               "border:1px solid black;}</style>")
+        yield "<table>"
+        yield "<thead>"
+        yield "<tr>"
+        yield "<th></th>"
+        for club in league.clubs:
+            yield f"<th>{club.name}</th>"
+        yield "</tr>"
+        yield "</thead>"
+        yield "<tbody>"
+        for c1 in league.clubs:
+            yield "<tr>"
+            yield f"<th>{c1.name}</th>"
+            for c2 in league.clubs:
+                score = int(league.results_matrix[c1.club_id, c2.club_id])
+                yield f"<td>{score}</td>"
+            yield "</tr>"
+        yield "</tbody>"
+        yield "</table>"
+
+    @output()
+    def rankings_versus_points_ranking(self, _):
+        return
         points_ranking = PointsRanking().rank(self.league)
 
         for r in all_subclasses(RankingMethod):
@@ -97,9 +131,8 @@ class OutputCreator:
 def main():
     with open(RESULTS_PATH) as f:
         results = json.load(f)
-        l = League(results)
-        fc = OutputCreator(l)
-        fc.run_all()
+        fc = OutputCreator(results)
+        fc.run_all(Path("/tmp/f"))
 
 if __name__ == "__main__":
     main()
