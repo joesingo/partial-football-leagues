@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from typing import Dict
+import itertools
 
 import numpy as np
 import numpy.linalg as linalg
@@ -193,6 +194,36 @@ class TournamentRanking(RankingMethod):
 class ScoresRanking(TournamentRanking):
     def _rank(self, A):
         return self.get_average_scores(A)
+
+class MaximumLikelihood(TournamentRanking):
+    convergence_threshold = 0.000001
+    max_iterations = 1000
+
+    def _rank(self, A):
+        M, m, n = self.get_matches(A)
+        W = A @ np.ones((n,))
+        # iterative procedure from 'Solution of a Ranking Problem from Binary
+        # Comparisons', L. R Ford (1957), p31, but using the notation from
+        # González-Díaz (note that 'A' in Ford is the same as 'M' for
+        # González-Díaz...)
+        w = np.full((n,), 1 / n)
+
+        for iteration in range(self.max_iterations):
+            old_w = np.array(w)
+            for i in range(n):
+                w[i] = W[i] / sum(M[i, j] / (w[i] + w[j]) for j in range(n))
+            w = w / np.sum(w)
+            diff = np.max(np.abs(w - old_w))
+            if diff <= self.convergence_threshold:
+                break
+        else:
+            raise ValueError(
+                "maximum likelihood iteration did not converge"
+            )
+
+        x = np.log(w)
+        # as per González-Díaz, normalise so x sums to 0 instead of 1
+        return x - np.sum(x) / n
 
 class Neustadtl(TournamentRanking):
     def _rank(self, A):

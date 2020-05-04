@@ -6,7 +6,12 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from rankings import League, RankingMethod, PointsRanking, TournamentRanking
+from rankings import (
+    League,
+    RankingMethod,
+    PointsRanking,
+    TournamentRanking,
+)
 
 HERE = path.abspath(path.dirname(__file__))
 RESULTS_PATH = Path(HERE).parent / "data" / "results.json"

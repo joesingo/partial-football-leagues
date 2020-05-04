@@ -9,6 +9,7 @@ import numpy as np
 
 from rankings import (
     ScoresRanking,
+    MaximumLikelihood,
     Neustadtl,
     FairBets,
     Buchholz,
@@ -22,6 +23,7 @@ def test_ranking_methods():
     A = np.array([[0, 4, 5], [1, 0, 25], [0, 1, 0]])
     expected = (
         (ScoresRanking, np.array([0.9, 0.839, 0.032])),
+        (MaximumLikelihood, np.array([2.051, 0.608, -2.659])),
         (Neustadtl, np.array([0.352, 0.055, 0.027])),
         (FairBets, np.array([0.801, 0.192, 0.006])),
         (Buchholz, np.array([1.335, 1.011, 0.881])),
