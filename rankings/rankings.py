@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 import itertools
 import operator
 
@@ -53,7 +53,7 @@ class League:
     Representation of a (partial) league. Consists of a collection of Clubs and
     the tournament results matrix
     """
-    clubs: [Club]
+    clubs: List[Club]
     club_ids: Dict[str, int]
 
     results_matrix: np.ndarray
@@ -120,11 +120,11 @@ class RankingMethod:
     """
     Base class for a method of ranking the clubs in a league
     """
-    def rank(self, league: League) -> [(Club, float)]:
+    def rank(self, league: League) -> List[Tuple[Club, float]]:
         raise NotImplementedError
 
     @classmethod
-    def ordinal_ranking(cls, scores: [(Club, float)]) -> [Club]:
+    def ordinal_ranking(cls, scores: List[Tuple[Club, float]]) -> List[Club]:
         srt = sorted(scores, key=operator.itemgetter(1), reverse=True)
         return [c for (c, score) in srt]
 
