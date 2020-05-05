@@ -6,6 +6,7 @@ test tournament -> club ranking method
 import numpy as np
 
 from rankings import (
+    Match,
     Club,
     League,
     GoalBasedLeague,
@@ -42,20 +43,13 @@ def test_league():
     a = "team a"
     b = "team b"
     c = "the team of c"
-    results = {
-        "clubs": [
-            {"name": a, "abbrev": "TA"},
-            {"name": b, "abbrev": "TB"},
-            {"name": c, "abbrev": "TC"},
-        ],
-        "matches": [
-            {"home": a, "away": b, "result": [1, 1]},
-            {"home": a, "away": c, "result": [1, 4]},
-            {"home": b, "away": c, "result": [4, 4]},
-            {"home": c, "away": b, "result": [2, 3]},
-        ],
-    }
-    league = League(results)
+    matches = [
+        Match(home=a, away=b, result=[1, 1]),
+        Match(home=a, away=c, result=[1, 4]),
+        Match(home=b, away=c, result=[4, 4]),
+        Match(home=c, away=b, result=[2, 3]),
+    ]
+    league = League(matches, abbreviations={a: "TA", b: "TB", c: "TC"})
 
     # check clubs
     assert list(c.name for c in league.clubs) == [a, b, c]
@@ -103,7 +97,7 @@ def test_league():
     ]))
 
     # check results matrix for goal-based tournament
-    goal_league = GoalBasedLeague(results)
+    goal_league = GoalBasedLeague(matches)
     assert np.all(goal_league.results_matrix == np.array([
         [0, 1, 1],
         [1, 0, 7],

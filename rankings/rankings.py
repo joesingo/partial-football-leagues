@@ -8,6 +8,12 @@ import numpy.linalg as linalg
 from sympy import Matrix
 
 @dataclass
+class Match:
+    home: str
+    away: str
+    result: Tuple[int, int]
+
+@dataclass
 class Club:
     """
     Representation of a club in a league
@@ -54,31 +60,37 @@ class League:
     the tournament results matrix
     """
     clubs: List[Club]
-    club_ids: Dict[str, int]
 
     results_matrix: np.ndarray
 
-    def __init__(self, results):
+    def __init__(self, matches: List[Match], abbreviations=None):
         self.clubs = []
-        self.club_ids = {}
+        abbreviations = abbreviations or {}
 
-        # init clubs
-        for i, club_dict in enumerate(results["clubs"]):
+        # build list of clubs
+        name_to_club = {}
+        for name in self.get_club_names(matches):
             club = Club(
-                name=club_dict["name"], club_id=i, abbrev=club_dict["abbrev"]
+                name=name,
+                abbrev=abbreviations.get(name),
+                club_id=None  # will be set after sorting
             )
+            name_to_club[name] = club
             self.clubs.append(club)
-            self.club_ids[club.name] = club.club_id
 
-        # create tournament matrix
+        # sort alphabetically and set correct IDs
+        self.clubs.sort(key=lambda c: c.abbrev or c.name)
+        for i, club in enumerate(self.clubs):
+            club.club_id = i
+
+        # construct tournament matrix
         self.results_matrix = np.zeros((self.num_clubs, self.num_clubs))
-        for match_dict in results["matches"]:
-            home = self.clubs[self.club_ids[match_dict["home"]]]
-            away = self.clubs[self.club_ids[match_dict["away"]]]
-            scores = match_dict["result"]
+        for match in matches:
+            home = name_to_club[match.home]
+            away = name_to_club[match.away]
 
             # record the match details in the Club objects
-            home_goals, away_goals = scores
+            home_goals, away_goals = match.result
             home.register_match(
                 scored=home_goals, conceded=away_goals, home=True
             )
@@ -92,6 +104,14 @@ class League:
             )
             self.results_matrix[home.club_id, away.club_id] += home_points
             self.results_matrix[away.club_id, home.club_id] += away_points
+
+    def get_club_names(self, matches):
+        seen = {}
+        for match in matches:
+            for name in (match.home, match.away):
+                if name not in seen:
+                    seen[name] = True
+                    yield name
 
     def get_tournament_scores(self, home_goals, away_goals):
         """

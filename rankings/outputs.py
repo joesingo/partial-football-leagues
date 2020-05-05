@@ -1,6 +1,5 @@
 import sys
 import inspect
-import json
 from os import path
 from pathlib import Path
 
@@ -19,8 +18,33 @@ from rankings import (
     GeneralisedRowSum,
 )
 
+from conversions import csv_to_matches
+
 HERE = path.abspath(path.dirname(__file__))
-RESULTS_PATH = Path(HERE).parent / "data" / "results.json"
+RESULTS_PATH = Path(HERE).parent / "data" / "football-data-co-uk" / "england" / "1920_e0.csv"
+
+ABBREVIATIONS = {
+    "Arsenal": "ARS",
+    "Aston Villa": "AVA",
+    "Bournemouth": "BOU",
+    "Brighton": "BRH",
+    "Burnley": "BUR",
+    "Chelsea": "CHE",
+    "Crystal Palace": "CRY",
+    "Everton": "EVE",
+    "Leicester": "LEI",
+    "Liverpool": "LIV",
+    "Man City": "MCI",
+    "Man United": "MUN",
+    "Newcastle": "NEW",
+    "Norwich": "NOR",
+    "Sheffield United": "SHU",
+    "Southampton": "SOU",
+    "Tottenham": "TOT",
+    "Watford": "WAT",
+    "West Ham": "WHU",
+    "Wolves": "WLV",
+}
 
 def all_subclasses(cls):
     for child in cls.__subclasses__():
@@ -49,9 +73,9 @@ class output:
         return func
 
 class OutputCreator:
-    def __init__(self, results):
-        self.league = League(results)
-        self.goal_league = GoalBasedLeague(results)
+    def __init__(self, matches, abbrevations=None):
+        self.league = League(matches, abbrevations)
+        self.goal_league = GoalBasedLeague(matches, abbrevations)
 
     def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
@@ -100,7 +124,7 @@ class OutputCreator:
         yield "<tbody>"
         for c1 in league.clubs:
             yield "<tr>"
-            yield f"<th>{c1.abbrev or club.name}</th>"
+            yield f"<th>{c1.abbrev or c1.name}</th>"
             for c2 in league.clubs:
                 score = None
                 bg = None
@@ -217,8 +241,8 @@ class OutputCreator:
 
 def main():
     with open(RESULTS_PATH) as f:
-        results = json.load(f)
-        fc = OutputCreator(results)
+        matches = list(csv_to_matches(f))
+        fc = OutputCreator(matches, ABBREVIATIONS)
         outpath = Path("/tmp/f")
         try:
             name = sys.argv[1]
