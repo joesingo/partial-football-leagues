@@ -3,7 +3,17 @@ from datetime import datetime
 
 from rankings import Match, Fixtures
 
-DATE_FORMAT = "%d/%m/%Y"
+DATE_FORMATS = ("%d/%m/%y", "%d/%m/%Y")
+
+def parse_date(date_str):
+    for fmt in DATE_FORMATS:
+        try:
+            return datetime.strptime(date_str, fmt)
+        except ValueError:
+            continue
+    raise ValueError(
+        f"date string '{date_str}' does not match any expected date formats"
+    )
 
 def csv_to_fixtures(csvfile) -> Fixtures:
     """
@@ -19,7 +29,7 @@ def csv_to_fixtures(csvfile) -> Fixtures:
             away = row["AwayTeam"]
             if not home or not away:
                 continue
-            date = datetime.strptime(row["Date"], DATE_FORMAT)
+            date = parse_date(row["Date"])
             if date != current_date:
                 current_date = date
                 if current_batch:

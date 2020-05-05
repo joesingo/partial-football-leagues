@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import sys
 import inspect
 from os import path
@@ -21,7 +22,7 @@ from rankings import (
 from conversions import csv_to_fixtures
 
 HERE = path.abspath(path.dirname(__file__))
-RESULTS_PATH = Path(HERE).parent / "data" / "football-data-co-uk" / "england" / "1920_e0.csv"
+DATA_PATH = Path(HERE).parent / "data" / "football-data-co-uk" / "england"
 
 ABBREVIATIONS = {
     "Arsenal": "ARS",
@@ -45,6 +46,12 @@ ABBREVIATIONS = {
     "West Ham": "WHU",
     "Wolves": "WLV",
 }
+
+@contextmanager
+def get_fixtures(division: int, year_string: int):
+    csv_path = DATA_PATH / f"{year_string}_e{division}.csv"
+    with csv_path.open() as f:
+        yield csv_to_fixtures(f)
 
 def all_subclasses(cls):
     for child in cls.__subclasses__():
@@ -238,10 +245,8 @@ class OutputCreator:
         ax.legend()
         fig.tight_layout()
 
-
 def main():
-    with open(RESULTS_PATH) as f:
-        fixtures = csv_to_fixtures(f)
+    with get_fixtures(0, "1920") as fixtures:
         fc = OutputCreator(fixtures, ABBREVIATIONS)
         outpath = Path("/tmp/f")
         try:
