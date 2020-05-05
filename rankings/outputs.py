@@ -1,3 +1,4 @@
+import sys
 import inspect
 import json
 from os import path
@@ -11,7 +12,11 @@ from rankings import (
     GoalBasedLeague,
     RankingMethod,
     PointsRanking,
+    AveragePointsRanking,
     TournamentRanking,
+    MaximumLikelihood,
+    FairBets,
+    GeneralisedRowSum,
 )
 
 HERE = path.abspath(path.dirname(__file__))
@@ -21,6 +26,15 @@ def all_subclasses(cls):
     for child in cls.__subclasses__():
         yield child
         yield from all_subclasses(child)
+
+def rescale(xs, min_val, max_val):
+    """
+    scale xs so that it's min and max entries are as given
+    """
+    min_x = np.min(xs)
+    max_x = np.max(xs)
+    normed = (xs - min_x) / (max_x - min_x)
+    return min_val + (max_val - min_val) * normed
 
 class output:
     """
@@ -41,13 +55,16 @@ class OutputCreator:
 
     def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
-            if not hasattr(method, "output"):
-                continue
-            ext = method.ext
-            filename = f"{name}.{ext}" if ext else name
-            p = outpath / filename
-            with p.open("w") as outfile:
-                method(outfile)
+            if hasattr(method, "output"):
+                self.run(name, outpath)
+
+    def run(self, name, outpath):
+        method = getattr(self, name)
+        ext = method.ext
+        filename = f"{name}.{ext}" if ext else name
+        p = outpath / filename
+        with p.open("w") as outfile:
+            method(outfile)
 
     @output(ext="html")
     def tournament_points_based(self, outfile):
@@ -77,13 +94,13 @@ class OutputCreator:
         yield "<tr>"
         yield "<th></th>"
         for club in league.clubs:
-            yield f"<th>{club.abbrev}</th>"
+            yield f"<th>{club.abbrev or club.name}</th>"
         yield "</tr>"
         yield "</thead>"
         yield "<tbody>"
         for c1 in league.clubs:
             yield "<tr>"
-            yield f"<th>{c1.abbrev}</th>"
+            yield f"<th>{c1.abbrev or club.name}</th>"
             for c2 in league.clubs:
                 score = None
                 bg = None
@@ -110,14 +127,19 @@ class OutputCreator:
         yield "</tbody>"
         yield "</table>"
 
-    @output()
-    def rankings_versus_points_ranking(self, _):
-        points_ranking = PointsRanking().rank(self.league)
-
+    def get_ranking_methods(self):
         for r in all_subclasses(RankingMethod):
-            if r in (PointsRanking, TournamentRanking):
-                continue
-            ranking = r().rank(self.league)
+            if r not in (TournamentRanking,):
+                yield r
+
+    @output()
+    def ordinal_rankings_versus_points_ranking(self, _):
+        points = PointsRanking().rank(self.league)
+        points_ranking = RankingMethod.ordinal_ranking(points)
+
+        for r in self.get_ranking_methods():
+            scores = r().rank(self.league)
+            ranking = RankingMethod.ordinal_ranking(scores)
             print(r.__name__)
 
             xs = []
@@ -154,13 +176,56 @@ class OutputCreator:
             plt.plot(xs[sort], ys[sort], "o-", label=r.__name__)
 
         plt.legend()
-        plt.show()
+
+    @output()
+    def scores_versus_points(self, _):
+        points = PointsRanking().rank(self.league)
+        points_vector = np.array([s for c, s in points])
+        min_points = np.min(points_vector)
+        max_points = np.max(points_vector)
+        perm = np.argsort(points_vector)[::-1]  # reverse to sort descending
+
+        ranking_methods = [
+            PointsRanking,
+            AveragePointsRanking,
+            MaximumLikelihood,
+            FairBets,
+            GeneralisedRowSum
+        ]
+        bar_width = 0.9 / len(ranking_methods)
+        xs = np.arange(len(self.league.clubs))
+        fig, ax = plt.subplots()
+
+        for i, r in enumerate(ranking_methods):
+            scores = r().rank(self.league)
+            scores_vector = np.array([s for c, s in scores])
+            x = xs + i * bar_width
+            ax.bar(
+                x, rescale(scores_vector[perm], min_points, max_points),
+                bar_width, align="edge", label=r.__name__
+            )
+
+        ax.set_title("Comparison of scores between ranking methods")
+        ax.set_xlabel("Club")
+        ax.set_ylabel("Score (scaled for comparison against points)")
+        ax.set_xticks(xs + bar_width * len(ranking_methods) / 2)
+        club_names = np.array([c.abbrev or c.name for c in self.league.clubs])
+        ax.set_xticklabels(club_names[perm])
+        ax.legend()
+        fig.tight_layout()
+
 
 def main():
     with open(RESULTS_PATH) as f:
         results = json.load(f)
         fc = OutputCreator(results)
-        fc.run_all(Path("/tmp/f"))
+        outpath = Path("/tmp/f")
+        try:
+            name = sys.argv[1]
+            fc.run(name, outpath)
+        except IndexError:
+            fc.run_all(outpath)
+        plt.show()
 
 if __name__ == "__main__":
     main()

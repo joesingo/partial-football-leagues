@@ -6,8 +6,10 @@ test tournament -> club ranking method
 import numpy as np
 
 from rankings import (
+    Club,
     League,
     GoalBasedLeague,
+    RankingMethod,
     ScoresRanking,
     MaximumLikelihood,
     Neustadtl,
@@ -17,6 +19,7 @@ from rankings import (
     RecursiveBuchholz,
     GeneralisedRowSum,
 )
+from outputs import rescale
 
 def test_ranking_methods():
     # from example 2.1 of González-Díaz
@@ -106,3 +109,19 @@ def test_league():
         [1, 0, 7],
         [4, 6, 0]
     ]))
+
+def test_ordinal_ranking():
+    a = Club(name="a FC", club_id=0)
+    b = Club(name="b FC", club_id=1)
+    c = Club(name="c FC", club_id=2)
+    d = Club(name="d FC", club_id=3)
+    scores = [(a, 0.4), (b, -7), (c, 6), (d, 0.41)]
+    assert RankingMethod.ordinal_ranking(scores) == [c, d, a, b]
+
+def test_rescale():
+    tests = (
+        (np.array([1,2,3,4]), (10, 11), np.array([10, 10 + 1/3, 10 + 2/3, 11])),
+        (np.array([-1, 0, 3]), (1, 9), np.array([1, 3, 9])),
+    )
+    for xs, (mn, mx), exp in tests:
+        assert np.all(rescale(xs, mn, mx) == exp), f"failure for {xs}"

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Optional
 import itertools
+import operator
 
 import numpy as np
 import numpy.linalg as linalg
@@ -12,8 +13,8 @@ class Club:
     Representation of a club in a league
     """
     name: str
-    abbrev: str
     club_id: int
+    abbrev: Optional[str] = None
 
     won: int = 0
     drawn: int = 0
@@ -119,34 +120,27 @@ class RankingMethod:
     """
     Base class for a method of ranking the clubs in a league
     """
-    def rank(self, league: League) -> [Club]:
+    def rank(self, league: League) -> [(Club, float)]:
         raise NotImplementedError
+
+    @classmethod
+    def ordinal_ranking(cls, scores: [(Club, float)]) -> [Club]:
+        srt = sorted(scores, key=operator.itemgetter(1), reverse=True)
+        return [c for (c, score) in srt]
 
 class PointsRanking(RankingMethod):
     """
     Rank clubs based on league points
     """
     def rank(self, league):
-        return sorted(
-            league.clubs,
-            key=lambda c: (c.points, c.goal_difference, c.goals_for),
-            reverse=True
-        )
+        return [(c, c.points) for c in league.clubs]
 
 class AveragePointsRanking(RankingMethod):
     """
     Rank by average points across the games played so far
     """
     def rank(self, league):
-        return sorted(
-            league.clubs,
-            key=lambda c: (
-                c.points / c.played,
-                c.goal_difference,
-                c.goals_for / c.played
-            ),
-            reverse=True
-        )
+        return [(c, c.points / c.played) for c in league.clubs]
 
 class TournamentRanking(RankingMethod):
     """
@@ -154,11 +148,7 @@ class TournamentRanking(RankingMethod):
     """
     def rank(self, league):
         scores = self._rank(league.results_matrix)
-        return sorted(
-            league.clubs,
-            key=lambda c: scores[c.club_id],
-            reverse=True
-        )
+        return [(c, scores[c.club_id]) for c in league.clubs]
 
     def _rank(self, results_matrix):
         """
