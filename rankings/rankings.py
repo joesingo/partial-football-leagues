@@ -1,17 +1,36 @@
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple
 import itertools
+import math
 import operator
 
 import numpy as np
 import numpy.linalg as linalg
 from sympy import Matrix
 
-@dataclass
+@dataclass(eq=True)
 class Match:
     home: str
     away: str
     result: Tuple[int, int]
+
+@dataclass
+class Fixtures:
+    matches_by_date: List[List[Match]]
+
+    def all_matches(self) -> List[Match]:
+        def inner():
+            for matches in self.matches_by_date:
+                yield from matches
+        return list(inner())
+
+    def partial(self, t: float):
+        """
+        Return a new Fixtures object containing only matches up to part-way
+        through the season, according to the parameter t in [0, 1]
+        """
+        n = math.floor(t * len(self.matches_by_date))
+        return Fixtures(matches_by_date=self.matches_by_date[:n])
 
 @dataclass
 class Club:
@@ -63,9 +82,11 @@ class League:
 
     results_matrix: np.ndarray
 
-    def __init__(self, matches: List[Match], abbreviations=None):
+    def __init__(self, fixtures: Fixtures, abbreviations=None):
         self.clubs = []
         abbreviations = abbreviations or {}
+
+        matches = fixtures.all_matches()
 
         # build list of clubs
         name_to_club = {}

@@ -3,9 +3,12 @@ TODO:
 
 test tournament -> club ranking method
 """
+from io import StringIO
+
 import numpy as np
 
 from rankings import (
+    Fixtures,
     Match,
     Club,
     League,
@@ -21,6 +24,7 @@ from rankings import (
     GeneralisedRowSum,
 )
 from outputs import rescale
+from conversions import csv_to_fixtures
 
 def test_ranking_methods():
     # from example 2.1 of González-Díaz
@@ -43,13 +47,28 @@ def test_league():
     a = "team a"
     b = "team b"
     c = "the team of c"
-    matches = [
-        Match(home=a, away=b, result=[1, 1]),
-        Match(home=a, away=c, result=[1, 4]),
-        Match(home=b, away=c, result=[4, 4]),
-        Match(home=c, away=b, result=[2, 3]),
-    ]
-    league = League(matches, abbreviations={a: "TA", b: "TB", c: "TC"})
+    fixtures = Fixtures(matches_by_date=[
+        [
+            Match(home=a, away=b, result=[1, 1])
+        ],
+        [
+            Match(home=a, away=c, result=[1, 4]),
+            Match(home=b, away=c, result=[4, 4])
+        ],
+        [
+            Match(home=c, away=b, result=[2, 3])
+        ],
+    ])
+    # test fixture subsetting
+    half = fixtures.partial(0.5)
+    assert len(half.matches_by_date) == 1
+    assert half.matches_by_date == fixtures.matches_by_date[0:1]
+    half = fixtures.partial(2 / 3)
+    assert len(half.matches_by_date) == 2
+    assert half.matches_by_date == fixtures.matches_by_date[0:2]
+
+    # test league
+    league = League(fixtures, abbreviations={a: "TA", b: "TB", c: "TC"})
 
     # check clubs
     assert list(c.name for c in league.clubs) == [a, b, c]
@@ -97,7 +116,7 @@ def test_league():
     ]))
 
     # check results matrix for goal-based tournament
-    goal_league = GoalBasedLeague(matches)
+    goal_league = GoalBasedLeague(fixtures)
     assert np.all(goal_league.results_matrix == np.array([
         [0, 1, 1],
         [1, 0, 7],
@@ -119,3 +138,28 @@ def test_rescale():
     )
     for xs, (mn, mx), exp in tests:
         assert np.all(rescale(xs, mn, mx) == exp), f"failure for {xs}"
+
+def test_csv_conversion():
+    csv_lines = [
+        "Div,Date,HomeTeam,AwayTeam,FTHG,FTAG",
+        "_,05/05/2020,Joe FC,Bob United,4,0",
+        "_,05/05/2020,Bill FC,Dave Albion,1,2",
+        "_,12/05/2020,Bill FC,Joe FC,3,4",
+        "_,13/05/2020,Dave Albion,Bob United,4,5",
+        "_,13/05/2020,AFC Steve,Joe FC,0,9",
+    ]
+    buf = StringIO()
+    buf.write("\n".join(csv_lines))
+    buf.seek(0)
+    fixtures = csv_to_fixtures(buf)
+    assert len(fixtures.matches_by_date) == 3
+    w1, w2, w3 = fixtures.matches_by_date
+    assert w1 == [
+        Match(home="Joe FC", away="Bob United", result=(4, 0)),
+        Match(home="Bill FC", away="Dave Albion", result=(1, 2))
+    ]
+    assert w2 == [Match(home="Bill FC", away="Joe FC", result=(3, 4))]
+    assert w3 == [
+        Match(home="Dave Albion", away="Bob United", result=(4, 5)),
+        Match(home="AFC Steve", away="Joe FC", result=(0, 9))
+    ]

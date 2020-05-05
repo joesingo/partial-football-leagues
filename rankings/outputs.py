@@ -18,7 +18,7 @@ from rankings import (
     GeneralisedRowSum,
 )
 
-from conversions import csv_to_matches
+from conversions import csv_to_fixtures
 
 HERE = path.abspath(path.dirname(__file__))
 RESULTS_PATH = Path(HERE).parent / "data" / "football-data-co-uk" / "england" / "1920_e0.csv"
@@ -73,9 +73,9 @@ class output:
         return func
 
 class OutputCreator:
-    def __init__(self, matches, abbrevations=None):
-        self.league = League(matches, abbrevations)
-        self.goal_league = GoalBasedLeague(matches, abbrevations)
+    def __init__(self, fixtures, abbrevations=None):
+        self.league = League(fixtures, abbrevations)
+        self.goal_league = GoalBasedLeague(fixtures, abbrevations)
 
     def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
@@ -241,8 +241,8 @@ class OutputCreator:
 
 def main():
     with open(RESULTS_PATH) as f:
-        matches = list(csv_to_matches(f))
-        fc = OutputCreator(matches, ABBREVIATIONS)
+        fixtures = csv_to_fixtures(f)
+        fc = OutputCreator(fixtures, ABBREVIATIONS)
         outpath = Path("/tmp/f")
         try:
             name = sys.argv[1]
