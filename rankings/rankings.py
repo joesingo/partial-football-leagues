@@ -79,24 +79,24 @@ class League:
     the tournament results matrix
     """
     clubs: List[Club]
-
     results_matrix: np.ndarray
 
-    def __init__(self, fixtures: Fixtures, abbreviations=None):
-        self.clubs = []
+    def __init__(self, fixtures: Fixtures, abbreviations=None,
+                 club_names=None):
         abbreviations = abbreviations or {}
-
         matches = fixtures.all_matches()
 
+        self.clubs = []
         # build list of clubs
         name_to_club = {}
-        for name in self.get_club_names(matches):
+        names = club_names or self.get_club_names(matches)
+        for name in names:
             club = Club(
                 name=name,
                 abbrev=abbreviations.get(name),
                 club_id=None  # will be set after sorting
             )
-            name_to_club[name] = club
+            name_to_club[club.name] = club
             self.clubs.append(club)
 
         # sort alphabetically and set correct IDs

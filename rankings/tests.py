@@ -123,6 +123,27 @@ def test_league():
         [4, 6, 0]
     ]))
 
+def test_league_club_names():
+    fixtures = Fixtures(matches_by_date=[[
+        Match(home="a", away="b", result=[1, 1])
+    ]])
+    l1 = League(fixtures)
+    l2 = League(fixtures, club_names=["a", "b", "c"])
+
+    assert len(l1.clubs) == 2
+    assert len(l2.clubs) == 3
+
+    a1, b1 = l1.clubs
+    a2, b2, c2 = l2.clubs
+    assert a1.name == "a"
+    assert a2.name == "a"
+    assert b1.name == "b"
+    assert b2.name == "b"
+    assert c2.name == "c"
+    assert a2.played == 1
+    assert b2.played == 1
+    assert c2.played == 0
+
 def test_ordinal_ranking():
     a = Club(name="a FC", club_id=0)
     b = Club(name="b FC", club_id=1)
