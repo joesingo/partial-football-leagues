@@ -20,11 +20,10 @@ class Match:
 class Fixtures:
     matches_by_date: List[List[Match]]
 
+    @listify
     def all_matches(self) -> List[Match]:
-        def inner():
-            for matches in self.matches_by_date:
-                yield from matches
-        return list(inner())
+        for matches in self.matches_by_date:
+            yield from matches
 
     def partial(self, t: float):
         """

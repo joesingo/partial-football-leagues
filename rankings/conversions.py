@@ -2,6 +2,7 @@ from csv import DictReader
 from datetime import datetime
 
 from rankings import Match, Fixtures
+from utils import listify
 
 DATE_FORMATS = ("%d/%m/%y", "%d/%m/%Y")
 
@@ -21,6 +22,7 @@ def csv_to_fixtures(csvfile) -> Fixtures:
 
     Note: this assumes that rows in the CSV are sorted in ascending date order
     """
+    @listify
     def inner():
         current_date = None
         current_batch = []
@@ -40,4 +42,4 @@ def csv_to_fixtures(csvfile) -> Fixtures:
             current_batch.append(m)
         if current_batch:
             yield current_batch
-    return Fixtures(list(inner()))
+    return Fixtures(inner())

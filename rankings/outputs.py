@@ -18,6 +18,7 @@ from rankings import (
     FairBets,
     GeneralisedRowSum,
 )
+from utils import listify
 
 from conversions import csv_to_fixtures
 
@@ -161,6 +162,7 @@ class OutputCreator:
         yield "</tbody>"
         yield "</table>"
 
+    @listify
     def get_ranking_methods(self):
         for r in all_subclasses(RankingMethod):
             if r not in (TournamentRanking,):
