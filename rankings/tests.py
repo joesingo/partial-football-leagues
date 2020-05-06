@@ -134,8 +134,21 @@ def test_ordinal_ranking():
     b = Club(name="b FC", club_id=1)
     c = Club(name="c FC", club_id=2)
     d = Club(name="d FC", club_id=3)
-    scores = [(a, 0.4), (b, -7), (c, 6), (d, 0.41)]
-    assert RankingMethod.ordinal_ranking(scores) == [c, d, a, b]
+
+    class MyRankingMethod(RankingMethod):
+        def rank(self, _):
+            return np.array([1,4,1,3])
+
+    class MyTieBreaker(RankingMethod):
+        def rank(self, _):
+            return np.array([10,11,12,13])
+
+    league = League(Fixtures(matches_by_date=[]), club_names=["a","b","c","d"])
+    expected = ["b", "d", "c", "a"]
+    ranking = MyRankingMethod().ordinal_ranking(
+        league, tie_breakers=[MyTieBreaker()]
+    )
+    assert [c.name for c in ranking] == expected
 
 def test_rescale():
     tests = (

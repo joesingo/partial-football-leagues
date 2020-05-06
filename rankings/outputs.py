@@ -17,6 +17,7 @@ from rankings import (
     MaximumLikelihood,
     FairBets,
     GeneralisedRowSum,
+    DEFAULT_TIE_BREAKERS,
 )
 from utils import listify
 
@@ -170,12 +171,14 @@ class OutputCreator:
 
     @output()
     def ordinal_rankings_versus_points_ranking(self, _):
-        points = PointsRanking().rank(self.league)
-        points_ranking = RankingMethod.ordinal_ranking(points)
+        points_ranking = PointsRanking().ordinal_ranking(
+            self.league, tie_breakers=DEFAULT_TIE_BREAKERS
+        )
 
         for r in self.get_ranking_methods():
-            scores = r().rank(self.league)
-            ranking = RankingMethod.ordinal_ranking(scores)
+            ranking = r().ordinal_ranking(
+                self.league, tie_breakers=DEFAULT_TIE_BREAKERS
+            )
             print(r.__name__)
 
             xs = []
@@ -216,10 +219,14 @@ class OutputCreator:
     @output()
     def scores_versus_points(self, _):
         points = PointsRanking().rank(self.league)
-        points_vector = np.array([s for c, s in points])
-        min_points = np.min(points_vector)
-        max_points = np.max(points_vector)
-        perm = np.argsort(points_vector)[::-1]  # reverse to sort descending
+        min_points = np.min(points)
+        max_points = np.max(points)
+
+        # work out league ranking (including tie-breakers)
+        league_ranking = PointsRanking().ordinal_ranking(
+            self.league, tie_breakers=DEFAULT_TIE_BREAKERS
+        )
+        perm = np.array([c.club_id for c in league_ranking])
 
         ranking_methods = [
             PointsRanking,
@@ -234,10 +241,9 @@ class OutputCreator:
 
         for i, r in enumerate(ranking_methods):
             scores = r().rank(self.league)
-            scores_vector = np.array([s for c, s in scores])
             x = xs + i * bar_width
             ax.bar(
-                x, rescale(scores_vector[perm], min_points, max_points),
+                x, rescale(scores[perm], min_points, max_points),
                 bar_width, align="edge", label=r.__name__
             )
 

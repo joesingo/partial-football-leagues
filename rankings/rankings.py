@@ -162,30 +162,53 @@ class RankingMethod:
     """
     Base class for a method of ranking the clubs in a league
     """
-    def rank(self, league: League) -> List[Tuple[Club, float]]:
+    def rank(self, league: League) -> np.ndarray:
         raise NotImplementedError
 
-    @classmethod
-    def ordinal_ranking(cls, scores: List[Tuple[Club, float]]) -> List[Club]:
-        srt = sorted(scores, key=operator.itemgetter(1), reverse=True)
-        return [c for (c, score) in srt]
+    def ordinal_ranking(self, league: League, tie_breakers=None) -> List[Club]:
+        tie_breakers = tie_breakers or []
+        ranking_methods = [self] + tie_breakers
+        # construct a matrix of scores: entry i,j is the score for club j in
+        # ranking method i
+        all_scores = np.zeros((len(ranking_methods), league.num_clubs))
+        for i, r in enumerate(ranking_methods):
+            all_scores[i, :] = r.rank(league)
+        return sorted(
+            league.clubs,
+            key=lambda c: tuple(all_scores[:, c.club_id]),
+            reverse=True
+        )
 
 class PointsRanking(RankingMethod):
     """
     Rank clubs based on league points
     """
     def rank(self, league):
-        return [(c, c.points) for c in league.clubs]
+        return np.array([c.points for c in league.clubs])
+
+class GoalDifferenceRanking(RankingMethod):
+    """
+    Rank clubs based on goal difference
+    """
+    def rank(self, league: League):
+        return np.array([c.goal_difference for c in league.clubs])
+
+class GoalsForRanking(RankingMethod):
+    """
+    Rank clubs based on goals scored
+    """
+    def rank(self, league: League):
+        return np.array([c.goals_for for c in league.clubs])
 
 class AveragePointsRanking(RankingMethod):
     """
     Rank by average points across the games played so far
     """
-    @listify
     def rank(self, league):
-        for c in league.clubs:
-            score = c.points / c.played if c.played > 0 else 0
-            yield (c, score)
+        return np.array([
+            c.points / c.played if c.played > 0 else 0
+            for c in league.clubs
+        ])
 
 class TournamentRanking(RankingMethod):
     """
@@ -194,8 +217,7 @@ class TournamentRanking(RankingMethod):
     def rank(self, league):
         if self.is_reducible(league.results_matrix):
             raise ValueError("tournament matrix is reducible")
-        scores = self._rank(league.results_matrix)
-        return [(c, scores[c.club_id]) for c in league.clubs]
+        return self._rank(league.results_matrix)
 
     def _rank(self, results_matrix):
         """
@@ -359,3 +381,5 @@ class GeneralisedRowSum(TournamentRanking):
         X = np.eye(n) + eps * C
         x = self.solve_linear_system(X, (1 + m_hat * n * eps) * s_star)
         return x / (m_hat * (n - 1))
+
+DEFAULT_TIE_BREAKERS = [GoalDifferenceRanking(), GoalsForRanking()]
