@@ -7,20 +7,8 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from rankings import (
-    League,
-    GoalBasedLeague,
-    RankingMethod,
-    PointsRanking,
-    AveragePointsRanking,
-    TournamentRanking,
-    MaximumLikelihood,
-    FairBets,
-    GeneralisedRowSum,
-    DEFAULT_TIE_BREAKERS,
-)
-from utils import listify
-
+from rankings import *
+from utils import listify, kendall_tau_distance
 from conversions import csv_to_fixtures
 
 HERE = path.abspath(path.dirname(__file__))
@@ -76,12 +64,13 @@ class output:
     """
     Decorator to mark a method as being a output generation method
     """
-    def __init__(self, ext=None):
-        self.ext = ext
+    def __init__(self, **kwargs):
+        self.kwargs = kwargs
 
     def __call__(self, func):
         func.output = True
-        func.ext = self.ext
+        for k, v in self.kwargs.items():
+            setattr(func, k, v)
         return func
 
 class OutputCreator:
@@ -96,11 +85,16 @@ class OutputCreator:
 
     def run(self, name, outpath):
         method = getattr(self, name)
-        ext = method.ext
-        filename = f"{name}.{ext}" if ext else name
-        p = outpath / filename
-        with p.open("w") as outfile:
-            method(outfile)
+        if getattr(method, "requires_dir", False):
+            outdir = outpath / name
+            outdir.mkdir(exist_ok=True)
+            method(outdir)
+        else:
+            ext = getattr(method, "ext", None)
+            filename = f"{name}.{ext}" if ext else name
+            p = outpath / filename
+            with p.open("w") as outfile:
+                method(outfile)
 
     @output(ext="html")
     def tournament_points_based(self, outfile):
@@ -175,6 +169,8 @@ class OutputCreator:
             self.league, tie_breakers=DEFAULT_TIE_BREAKERS
         )
 
+        fig, ax = plt.subplots()
+
         for r in self.get_ranking_methods():
             ranking = r().ordinal_ranking(
                 self.league, tie_breakers=DEFAULT_TIE_BREAKERS
@@ -206,15 +202,15 @@ class OutputCreator:
             ys = np.array(ys)
             sort = np.argsort(xs)
 
-            plt.title("Rankings methods versus the current league table")
-            plt.xlabel("Position in current league table")
-            plt.ylabel("Position in ranking")
+            ax.set_title("Rankings methods versus the current league table")
+            ax.set_xlabel("Position in current league table")
+            ax.set_ylabel("Position in ranking")
             ticks = np.arange(1, self.league.num_clubs + 1, 1)
-            plt.xticks(ticks)
-            plt.yticks(ticks)
-            plt.plot(xs[sort], ys[sort], "o-", label=r.__name__)
+            ax.set_xticks(ticks)
+            ax.set_yticks(ticks)
+            ax.plot(xs[sort], ys[sort], "o-", label=r.__name__)
 
-        plt.legend()
+        fig.legend()
 
     @output()
     def scores_versus_points(self, _):
@@ -256,12 +252,98 @@ class OutputCreator:
         ax.legend()
         fig.tight_layout()
 
+    @output(requires_dir=True)
+    def historical_league_averages(self, outdir):
+        methods = self.get_ranking_methods()
+
+        start_year = 1999
+        end_year = 2018
+        division = 0
+        years = np.arange(start_year, end_year + 1)
+
+        # number of match days in the season is generally around 100. let's
+        # take 50 points throughout each season
+        num_timesteps = 50
+        xs = np.linspace(0, 1, num_timesteps + 1)[1:]
+
+        # load data if it is present, or run the experiment and save
+        ys = None
+        data = outdir / "data.npy"
+        if data.exists():
+            print("data already exists: loading...")
+            with data.open("rb") as f:
+                ys = np.load(f)
+        else:
+            print("data not found: running experiments...")
+            ys = np.zeros((len(years), len(xs), len(methods)))
+
+            for i, year in enumerate(years):
+                print(f"{year}-{year + 1} season")
+                with get_fixtures(division, year) as fixtures:
+                    # get end-of-season results according to normal points
+                    # system
+                    full_league = League(fixtures)
+                    # note: the ranking is a list of club *names*
+                    points_ranking = [
+                        c.name for c in PointsRanking().ordinal_ranking(
+                            full_league, tie_breakers=DEFAULT_TIE_BREAKERS
+                        )
+                    ]
+                    club_names = [c.name for c in full_league.clubs]
+
+                    for j, x in enumerate(xs):
+                        print(".", end="")
+                        sys.stdout.flush()
+                        partial_league = League(
+                            fixtures.partial(x), club_names=club_names
+                        )
+                        for k, r in enumerate(methods):
+                            try:
+                                ranking = [
+                                    c.name for c in r().ordinal_ranking(
+                                        partial_league,
+                                        tie_breakers=DEFAULT_TIE_BREAKERS
+                                    )
+                                ]
+                                err = kendall_tau_distance(
+                                    ranking,
+                                    points_ranking
+                                )
+                            except ValueError:
+                                err = None
+                            ys[i, j, k] = err
+
+                    print("")
+
+            print("saving...")
+            with data.open("wb") as f:
+                np.save(f, ys)
+
+        # plot results
+        av_ys = np.mean(ys, axis=0)
+        methods_to_plot = (
+            PointsRanking, AveragePointsRanking, MaximumLikelihood,
+            GeneralisedRowSum, FairBets
+        )
+        fig, ax = plt.subplots()
+        for k, r in enumerate(methods):
+            if r in methods_to_plot:
+                ax.plot(100 * xs, av_ys[:, k], "o-", label=r.__name__)
+
+        ax.set_title(
+            "Average swap distance between partial-season ranking\nand final "
+            f"league table ({start_year}-{end_year})"
+        )
+        ax.set_xlabel("Percentage through season")
+        ax.set_ylabel("Average swap distance")
+        fig.legend()
+
     @output()
     def match_days_per_year(self, _):
         start_year = 1999
         end_year = 2018
-        # note: conference is also available for 2005 onwards, but i will not
-        # bother to include it
+        # note: the conference league is also available for 2005 onwards, but i
+        # will not bother to include it
         divisions = {
             0: "Premier League",
             1: "Championship",
@@ -284,9 +366,9 @@ class OutputCreator:
         ax.set_xticks(years[::2])
 
 def main():
-    with get_fixtures(0, 2003) as fixtures:
+    with get_fixtures(0, 2019) as fixtures:
         fc = OutputCreator(fixtures, abbrevations=ABBREVIATIONS)
-        outpath = Path("/tmp/f")
+        outpath = Path("artifacts")
         try:
             name = sys.argv[1]
             fc.run(name, outpath)
