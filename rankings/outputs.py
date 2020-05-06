@@ -197,16 +197,12 @@ class OutputCreator:
 
     @output()
     def ordinal_rankings_versus_points_ranking(self, _):
-        points_ranking = PointsRanking().ordinal_ranking(
-            self.league, tie_breakers=DEFAULT_TIE_BREAKERS
-        )
+        points_ranking = PointsRanking().ordinal_ranking(self.league)
 
         fig, ax = plt.subplots()
 
         for r in self.get_ranking_methods():
-            ranking = r().ordinal_ranking(
-                self.league, tie_breakers=DEFAULT_TIE_BREAKERS
-            )
+            ranking = r().ordinal_ranking(self.league)
             print(r.__name__)
 
             xs = []
@@ -251,9 +247,7 @@ class OutputCreator:
         max_points = np.max(points)
 
         # work out league ranking (including tie-breakers)
-        league_ranking = PointsRanking().ordinal_ranking(
-            self.league, tie_breakers=DEFAULT_TIE_BREAKERS
-        )
+        league_ranking = PointsRanking().ordinal_ranking(self.league)
         perm = np.array([c.club_id for c in league_ranking])
 
         ranking_methods = [
@@ -318,7 +312,7 @@ class OutputCreator:
                     # note: the ranking is a list of club *names*
                     points_ranking = [
                         c.name for c in PointsRanking().ordinal_ranking(
-                            full_league, tie_breakers=DEFAULT_TIE_BREAKERS
+                            full_league
                         )
                     ]
                     club_names = [c.name for c in full_league.clubs]
@@ -334,7 +328,6 @@ class OutputCreator:
                                 ranking = [
                                     c.name for c in r().ordinal_ranking(
                                         partial_league,
-                                        tie_breakers=DEFAULT_TIE_BREAKERS
                                     )
                                 ]
                                 err = kendall_tau_distance(

@@ -170,7 +170,7 @@ class RankingMethod:
         raise NotImplementedError
 
     def ordinal_ranking(self, league: League, tie_breakers=None) -> List[Club]:
-        tie_breakers = tie_breakers or []
+        tie_breakers = tie_breakers or DEFAULT_TIE_BREAKERS
         ranking_methods = [self] + tie_breakers
         # construct a matrix of scores: entry i,j is the score for club j in
         # ranking method i
