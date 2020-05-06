@@ -48,7 +48,10 @@ ABBREVIATIONS = {
 }
 
 @contextmanager
-def get_fixtures(division: int, year_string: int):
+def get_fixtures(division: int, year: int):
+    y_start = year % 100
+    y_end = (y_start + 1) % 100
+    year_string = f"{y_start:0>2}{y_end:0>2}"
     csv_path = DATA_PATH / f"{year_string}_e{division}.csv"
     with csv_path.open() as f:
         yield csv_to_fixtures(f)
@@ -246,8 +249,8 @@ class OutputCreator:
         fig.tight_layout()
 
 def main():
-    with get_fixtures(0, "1920") as fixtures:
-        fc = OutputCreator(fixtures, ABBREVIATIONS)
+    with get_fixtures(0, 2003) as fixtures:
+        fc = OutputCreator(fixtures, abbrevations=ABBREVIATIONS)
         outpath = Path("/tmp/f")
         try:
             name = sys.argv[1]
