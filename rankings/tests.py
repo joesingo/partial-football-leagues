@@ -10,6 +10,7 @@ import numpy as np
 from rankings import *
 from outputs import rescale
 from conversions import csv_to_fixtures
+from utils import kendall_tau_distance
 
 def test_ranking_methods():
     # from example 2.1 of González-Díaz
@@ -201,3 +202,9 @@ def test_reducible():
     ])
     assert TournamentRanking.is_reducible(A_red)
     assert not TournamentRanking.is_reducible(A_irred)
+
+def test_kendall_tau_distance():
+    l1 = ["a", "b", "c", "d", "e"]
+    l2 = ["c", "d", "a", "b", "e"]
+    # swaps are {a, c}, {a, d}, {b, c}, {b, d}, so distance should be 4
+    assert kendall_tau_distance(l1, l2) == 4
