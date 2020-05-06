@@ -7,22 +7,7 @@ from io import StringIO
 
 import numpy as np
 
-from rankings import (
-    Fixtures,
-    Match,
-    Club,
-    League,
-    GoalBasedLeague,
-    RankingMethod,
-    ScoresRanking,
-    MaximumLikelihood,
-    Neustadtl,
-    FairBets,
-    Buchholz,
-    RecursivePerformance,
-    RecursiveBuchholz,
-    GeneralisedRowSum,
-)
+from rankings import *
 from outputs import rescale
 from conversions import csv_to_fixtures
 
@@ -184,3 +169,19 @@ def test_csv_conversion():
         Match(home="Dave Albion", away="Bob United", result=(4, 5)),
         Match(home="AFC Steve", away="Joe FC", result=(0, 9))
     ]
+
+def test_reducible():
+    # reducible: cannot get from index 0 to 2
+    A_red = np.array([
+        [1, 0, 2],
+        [5, 0, 1],
+        [1, 0, 0],
+    ])
+    # irreducible
+    A_irred = np.array([
+        [1, 3, 2],
+        [5, 0, 1],
+        [1, 0, 0],
+    ])
+    assert TournamentRanking.is_reducible(A_red)
+    assert not TournamentRanking.is_reducible(A_irred)

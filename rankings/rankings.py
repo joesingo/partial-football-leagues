@@ -193,6 +193,8 @@ class TournamentRanking(RankingMethod):
     Base class for ranking methods operating solely on the tournament matrix
     """
     def rank(self, league):
+        if self.is_reducible(league.results_matrix):
+            raise ValueError("tournament matrix is reducible")
         scores = self._rank(league.results_matrix)
         return [(c, scores[c.club_id]) for c in league.clubs]
 
@@ -236,6 +238,27 @@ class TournamentRanking(RankingMethod):
 
         x = sol.xreplace({t: free_val for t in sol.free_symbols})
         return np.array(x).astype("float64").T.flatten()
+
+    @classmethod
+    def is_reducible(cls, A):
+        """
+        Return True iff the square matrix A is reducible
+        """
+        n, m = A.shape
+        assert n == m, "matrix must be square"
+        for i in range(n):
+            unreachable = {j: True for j in range(n)}
+            stack = [i]
+            while stack:
+                j = stack.pop(-1)
+                if j in unreachable:
+                    del unreachable[j]
+                    for k in range(n):
+                        if A[j, k] > 0:
+                            stack.append(k)
+            if len(unreachable) > 0:
+                return True
+        return False
 
 class ScoresRanking(TournamentRanking):
     def _rank(self, A):
