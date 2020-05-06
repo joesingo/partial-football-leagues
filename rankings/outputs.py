@@ -55,7 +55,7 @@ def get_fixtures(division: int, year: int):
     y_end = (y_start + 1) % 100
     year_string = f"{y_start:0>2}{y_end:0>2}"
     csv_path = DATA_PATH / f"{year_string}_e{division}.csv"
-    with csv_path.open() as f:
+    with csv_path.open(encoding="latin_1") as f:
         yield csv_to_fixtures(f)
 
 def all_subclasses(cls):
@@ -255,6 +255,33 @@ class OutputCreator:
         ax.set_xticklabels(club_names[perm])
         ax.legend()
         fig.tight_layout()
+
+    @output()
+    def match_days_per_year(self, _):
+        start_year = 1999
+        end_year = 2018
+        # note: conference is also available for 2005 onwards, but i will not
+        # bother to include it
+        divisions = {
+            0: "Premier League",
+            1: "Championship",
+            2: "League 1",
+            3: "League 2",
+        }
+
+        fig, ax = plt.subplots()
+        years = np.arange(start_year, end_year + 1)
+        for division, label in divisions.items():
+            match_days = np.zeros((len(years),))
+            for i, year in enumerate(years):
+                with get_fixtures(division, year) as fixtures:
+                    match_days[i] = fixtures.num_dates
+            ax.plot(years, match_days, label=label)
+        fig.legend()
+        ax.set_title("Number of match days per season")
+        ax.set_xlabel("Season start year")
+        ax.set_ylabel("Number of matchdays")
+        ax.set_xticks(years[::2])
 
 def main():
     with get_fixtures(0, 2003) as fixtures:

@@ -32,7 +32,7 @@ def test_league():
     a = "team a"
     b = "team b"
     c = "the team of c"
-    fixtures = Fixtures(matches_by_date=[
+    mbd = [
         [
             Match(home=a, away=b, result=[1, 1])
         ],
@@ -43,7 +43,10 @@ def test_league():
         [
             Match(home=c, away=b, result=[2, 3])
         ],
-    ])
+    ]
+    fixtures = Fixtures(matches_by_date=mbd)
+    assert fixtures.all_matches() == mbd[0] + mbd[1] + mbd[2]
+    assert fixtures.num_dates == 3
     # test fixture subsetting
     half = fixtures.partial(0.5)
     assert len(half.matches_by_date) == 1

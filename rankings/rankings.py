@@ -33,6 +33,10 @@ class Fixtures:
         n = math.floor(t * len(self.matches_by_date))
         return Fixtures(matches_by_date=self.matches_by_date[:n])
 
+    @property
+    def num_dates(self):
+        return len(self.matches_by_date)
+
 @dataclass
 class Club:
     """
