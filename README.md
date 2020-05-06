@@ -79,3 +79,9 @@
 
 - Original results data for 19/20 premier league came from
   [here](https://github.com/openfootball/england/blob/master/2019-20/1-premierleague.txt)
+
+- Results from 1999 to 2020 cam from
+  [football-data.co.uk](http://www.football-data.co.uk/englandm.php). The
+  script at `data/football-data-co-uk/download_csvs.py` takes the URL to that
+  page (or similar pages for other countries besides England) and downloads all
+  available CSVs.
