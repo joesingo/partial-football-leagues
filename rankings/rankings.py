@@ -8,6 +8,8 @@ import numpy as np
 import numpy.linalg as linalg
 from sympy import Matrix
 
+from utils import listify
+
 @dataclass(eq=True)
 class Match:
     home: str
@@ -180,8 +182,11 @@ class AveragePointsRanking(RankingMethod):
     """
     Rank by average points across the games played so far
     """
+    @listify
     def rank(self, league):
-        return [(c, c.points / c.played) for c in league.clubs]
+        for c in league.clubs:
+            score = c.points / c.played if c.played > 0 else 0
+            yield (c, score)
 
 class TournamentRanking(RankingMethod):
     """
