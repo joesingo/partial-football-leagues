@@ -75,8 +75,9 @@ class output:
 
 class OutputCreator:
     def __init__(self, fixtures, abbrevations=None):
-        self.league = League(fixtures, abbrevations)
-        self.goal_league = GoalBasedLeague(fixtures, abbrevations)
+        self.fixtures = fixtures
+        self.league = League(self.fixtures, abbrevations)
+        self.goal_league = GoalBasedLeague(self.fixtures, abbrevations)
 
     def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
@@ -117,28 +118,15 @@ class OutputCreator:
             for i in range(n) for j in range(n) if j != i
         )
 
-        yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
-               "border:1px solid black;padding:0.7em;text-align:center;}</style>")
-        yield "<table>"
-        yield "<thead>"
-        yield "<tr>"
-        yield "<th></th>"
-        for club in league.clubs:
-            yield f"<th>{club.abbrev or club.name}</th>"
-        yield "</tr>"
-        yield "</thead>"
-        yield "<tbody>"
-        for c1 in league.clubs:
-            yield "<tr>"
-            yield f"<th>{c1.abbrev or c1.name}</th>"
-            for c2 in league.clubs:
+        labels = [c.abbrev or c.name for c in league.clubs]
+        values = {}
+        for i, c1 in enumerate(league.clubs):
+            for j, c2 in enumerate(league.clubs):
                 score = None
                 bg = None
-                fg = None
                 if c1 == c2:
                     score = "-"
                     bg = 255
-                    fg = 0
                 else:
                     raw_score = league.results_matrix[c1.club_id, c2.club_id]
                     score = int(raw_score)
@@ -146,13 +134,57 @@ class OutputCreator:
                         (raw_score - min_score) / (max_score - min_score)
                     )
                     bg = 255 - int(relative_score * 255)
-                    fg = 255 - bg
 
-                bg_colour = f"rgb({bg}, {bg}, {bg})"
-                fg_colour = f"rgb({fg}, {fg}, {fg})"
-                yield (f"<td style='background: {bg_colour}'>"
-                       f"<span style='background:white'>{score}</span></td>")
+                values[(i, j)] = {
+                    "bg": f"rgb({bg}, {bg}, {bg})",
+                    "text": str(score)
+                }
+        yield from self.html_matrix(labels, values)
 
+    @output(ext="html")
+    def fixtures_so_far(self, outfile):
+        labels = [c.abbrev or c.name for c in self.league.clubs]
+        values = {}
+        for i, c1 in enumerate(self.league.clubs):
+            for j, c2 in enumerate(self.league.clubs):
+                values[(i, j)] = {
+                    "bg": "red" if i != j else "#aaa",
+                    "text": ""
+                }
+
+        name_to_id = {c.name: c.club_id for c in self.league.clubs}
+        for match in self.fixtures.all_matches():
+            i = name_to_id[match.home]
+            j = name_to_id[match.away]
+            values[(i, j)] = {"bg": "white", "text": ""}
+
+        for line in self.html_matrix(labels, values):
+            outfile.write(line + "\n")
+
+    def html_matrix(self, labels, values):
+        yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
+               "border:1px solid black;padding:0.7em;text-align:center;}</style>")
+        yield "<table>"
+        yield "<thead>"
+        yield "<tr>"
+        yield "<th></th>"
+        for label in labels:
+            yield f"<th>{label}</th>"
+        yield "</tr>"
+        yield "</thead>"
+        yield "<tbody>"
+        for i, label in enumerate(labels):
+            yield "<tr>"
+            yield f"<th>{label}</th>"
+            for j, _ in enumerate(labels):
+                value = values[(i, j)]
+                if "bg" in value:
+                    yield f"<td style='background: {value['bg']}'>"
+                else:
+                    yield "<td>"
+                yield "<span style='background: white'>"
+                yield value["text"]
+                yield "</span>"
             yield "</tr>"
         yield "</tbody>"
         yield "</table>"
