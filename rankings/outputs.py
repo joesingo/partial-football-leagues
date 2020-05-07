@@ -242,6 +242,46 @@ class OutputCreator:
 
         fig.legend()
 
+    @output(ext="html")
+    def ordinal_ranking_table(self, outfile):
+        ranking_methods = [
+            PointsRanking, AveragePointsRanking, MaximumLikelihood, Neustadtl,
+            Buchholz, RecursiveBuchholz, FairBets,
+        ]
+        rankings = [r().ordinal_ranking(self.league) for r in ranking_methods]
+        points_ranks = {c.name: i for i, c in enumerate(rankings[0])}
+
+        def get_html_lines():
+            # todo: make a new method to wrap creation of HTML table?
+            yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
+                   "border:1px solid black;padding:0.7em;text-align:center;}</style>")
+            yield "<table>"
+            yield "<thead>"
+            yield "<tr>"
+            for r in ranking_methods:
+                yield f"<th>{r.__name__}</th>"
+            yield "</tr>"
+            yield "</thead>"
+            yield "<tbody>"
+
+            for i, clubs in enumerate(zip(*rankings)):
+                yield "<tr>"
+                for club in clubs:
+                    yield f"<td>"
+                    yield (club.abbrev or club.name)
+                    diff = points_ranks[club.name] - i
+                    if diff > 0:
+                        yield f" <span style='color: green'>(+{diff})</span>"
+                    elif diff < 0:
+                        yield f" <span style='color: red'>(-{-diff})</span>"
+                    yield "</td>"
+                yield "</tr>"
+            yield "</tbody>"
+            yield "</table>"
+
+        for line in get_html_lines():
+            outfile.write(line + "\n")
+
     @output()
     def scores_versus_points(self, _):
         points = PointsRanking().rank(self.league)
