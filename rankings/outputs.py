@@ -12,13 +12,15 @@ from utils import listify, kendall_tau_distance
 from conversions import csv_to_fixtures
 
 HERE = path.abspath(path.dirname(__file__))
-DATA_PATH = Path(HERE).parent / "data" / "football-data-co-uk" / "england"
+DATA_PATH = Path(HERE).parent / "data"
+CSV_PATH = DATA_PATH / "football-data-co-uk" / "england"
+IMAGES_PATH = DATA_PATH / "images"
 
 ABBREVIATIONS = {
     "Arsenal": "ARS",
-    "Aston Villa": "AVA",
+    "Aston Villa": "AVL",
     "Bournemouth": "BOU",
-    "Brighton": "BRH",
+    "Brighton": "BHA",
     "Burnley": "BUR",
     "Chelsea": "CHE",
     "Crystal Palace": "CRY",
@@ -34,7 +36,7 @@ ABBREVIATIONS = {
     "Tottenham": "TOT",
     "Watford": "WAT",
     "West Ham": "WHU",
-    "Wolves": "WLV",
+    "Wolves": "WOL",
 }
 
 @contextmanager
@@ -42,7 +44,7 @@ def get_fixtures(division: int, year: int):
     y_start = year % 100
     y_end = (y_start + 1) % 100
     year_string = f"{y_start:0>2}{y_end:0>2}"
-    csv_path = DATA_PATH / f"{year_string}_e{division}.csv"
+    csv_path = CSV_PATH / f"{year_string}_e{division}.csv"
     with csv_path.open(encoding="latin_1") as f:
         yield csv_to_fixtures(f)
 
