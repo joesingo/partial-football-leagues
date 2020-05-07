@@ -76,6 +76,15 @@ class output:
         return func
 
 class OutputCreator:
+    special_methods = [
+        PointsRanking,
+        AveragePointsRanking,
+        MaximumLikelihood,
+        Neustadtl,
+        RecursivePerformance,
+        FairBets
+    ]
+
     def __init__(self, fixtures, abbrevations=None):
         self.fixtures = fixtures
         self.league = League(self.fixtures, abbrevations)
@@ -96,7 +105,8 @@ class OutputCreator:
             ext = getattr(method, "ext", None)
             filename = f"{name}.{ext}" if ext else name
             p = outpath / filename
-            with p.open("w") as outfile:
+            mode = "wb" if getattr(method, "binary", False) else "w"
+            with p.open(mode) as outfile:
                 method(outfile)
 
     @output(ext="html")
@@ -166,7 +176,7 @@ class OutputCreator:
     def html_matrix(self, labels, values):
         yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
                "border:1px solid black;padding:0.7em;text-align:center;}</style>")
-        yield "<table>"
+        yield "<table class='matrix'>"
         yield "<thead>"
         yield "<tr>"
         yield "<th></th>"
@@ -203,7 +213,7 @@ class OutputCreator:
 
         fig, ax = plt.subplots()
 
-        for r in self.get_ranking_methods():
+        for r in self.special_methods:
             ranking = r().ordinal_ranking(self.league)
             print(r.__name__)
 
@@ -244,21 +254,19 @@ class OutputCreator:
 
     @output(ext="html")
     def ordinal_ranking_table(self, outfile):
-        ranking_methods = [
-            PointsRanking, AveragePointsRanking, MaximumLikelihood, Neustadtl,
-            Buchholz, RecursiveBuchholz, FairBets,
-        ]
-        rankings = [r().ordinal_ranking(self.league) for r in ranking_methods]
+        r_methods = self.special_methods
+        rankings = [r().ordinal_ranking(self.league) for r in r_methods]
         points_ranks = {c.name: i for i, c in enumerate(rankings[0])}
 
         def get_html_lines():
             # todo: make a new method to wrap creation of HTML table?
             yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
-                   "border:1px solid black;padding:0.7em;text-align:center;}</style>")
-            yield "<table>"
+                   "border:1px solid black;padding:0.5em;text-align:center;}</style>")
+            yield "<table class='ordinal_rankings'>"
             yield "<thead>"
             yield "<tr>"
-            for r in ranking_methods:
+            yield "<th></th>"
+            for r in r_methods:
                 yield f"<th>{r.__name__}</th>"
             yield "</tr>"
             yield "</thead>"
@@ -266,10 +274,15 @@ class OutputCreator:
 
             for i, clubs in enumerate(zip(*rankings)):
                 yield "<tr>"
+                yield f"<th>{i + 1}</th>"
                 for club in clubs:
                     yield f"<td>"
-                    yield (club.abbrev or club.name)
                     diff = points_ranks[club.name] - i
+                    display_name = club.abbrev or club.name
+                    if diff != 0:
+                        yield f"<b>{display_name}</b>"
+                    else:
+                        yield display_name
                     if diff > 0:
                         yield f" <span style='color: green'>(+{diff})</span>"
                     elif diff < 0:
@@ -282,8 +295,8 @@ class OutputCreator:
         for line in get_html_lines():
             outfile.write(line + "\n")
 
-    @output()
-    def scores_versus_points(self, _):
+    @output(binary=True, ext="png")
+    def scores_versus_points(self, outfile):
         points = PointsRanking().rank(self.league)
         min_points = np.min(points)
         max_points = np.max(points)
@@ -292,13 +305,7 @@ class OutputCreator:
         league_ranking = PointsRanking().ordinal_ranking(self.league)
         perm = np.array([c.club_id for c in league_ranking])
 
-        ranking_methods = [
-            PointsRanking,
-            AveragePointsRanking,
-            MaximumLikelihood,
-            FairBets,
-            GeneralisedRowSum
-        ]
+        ranking_methods = self.special_methods
         bar_width = 0.9 / len(ranking_methods)
         xs = np.arange(len(self.league.clubs))
         fig, ax = plt.subplots()
@@ -313,12 +320,15 @@ class OutputCreator:
 
         ax.set_title("Comparison of scores between ranking methods")
         ax.set_xlabel("Club")
-        ax.set_ylabel("Score (scaled for comparison against points)")
+        ax.set_ylabel("Score (scaled for comparison against league points)")
         ax.set_xticks(xs + bar_width * len(ranking_methods) / 2)
         club_names = np.array([c.abbrev or c.name for c in self.league.clubs])
         ax.set_xticklabels(club_names[perm])
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(45)
         ax.legend()
         fig.tight_layout()
+        fig.savefig(outfile, format="png")
 
     @output(requires_dir=True)
     def historical_league_averages(self, outdir):
@@ -388,13 +398,10 @@ class OutputCreator:
 
         # plot results
         av_ys = np.mean(ys, axis=0)
-        methods_to_plot = (
-            PointsRanking, AveragePointsRanking, MaximumLikelihood,
-            GeneralisedRowSum, FairBets
-        )
+        methods_to_plot = self.special_methods
         fig, ax = plt.subplots()
         for k, r in enumerate(methods):
-            if r in methods_to_plot:
+            if r in methods_to_plot and r not in (GoalDifferenceRanking, GoalsForRanking):
                 ax.plot(100 * xs, av_ys[:, k], "o-", label=r.__name__)
 
         ax.set_title(
@@ -404,6 +411,9 @@ class OutputCreator:
         ax.set_xlabel("Percentage through season")
         ax.set_ylabel("Average swap distance")
         fig.legend()
+        fig.tight_layout()
+        with (outdir / "graph.png").open("wb") as f:
+            fig.savefig(f, format="png")
 
     @output()
     def match_days_per_year(self, _):
