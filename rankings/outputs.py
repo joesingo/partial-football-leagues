@@ -443,15 +443,20 @@ class OutputCreator:
         ax.set_xticks(years[::2])
 
 def main():
+    try:
+        output_dir = sys.argv[1]
+    except IndexError:
+        print(f"usage: {sys.argv[0]} OUTPUT_DIR [METHOD]", file=sys.stderr)
+        return 1
+
     with get_fixtures(0, 2019) as fixtures:
         fc = OutputCreator(fixtures, abbrevations=ABBREVIATIONS)
-        outpath = Path("artifacts")
+        outpath = Path(output_dir)
         try:
-            name = sys.argv[1]
+            name = sys.argv[2]
             fc.run(name, outpath)
         except IndexError:
             fc.run_all(outpath)
-        plt.show()
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
