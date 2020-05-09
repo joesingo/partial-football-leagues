@@ -215,7 +215,7 @@ class OutputCreator:
 
         for r in self.special_methods:
             ranking = r().ordinal_ranking(self.league)
-            print(r.__name__)
+            print(r.display_name)
 
             xs = []
             ys = []
@@ -248,7 +248,7 @@ class OutputCreator:
             ticks = np.arange(1, self.league.num_clubs + 1, 1)
             ax.set_xticks(ticks)
             ax.set_yticks(ticks)
-            ax.plot(xs[sort], ys[sort], "o-", label=r.__name__)
+            ax.plot(xs[sort], ys[sort], "o-", label=r.display_name)
 
         fig.legend()
 
@@ -267,7 +267,7 @@ class OutputCreator:
             yield "<tr>"
             yield "<th></th>"
             for r in r_methods:
-                yield f"<th>{r.__name__}</th>"
+                yield f"<th>{r.display_name}</th>"
             yield "</tr>"
             yield "</thead>"
             yield "<tbody>"
@@ -315,7 +315,7 @@ class OutputCreator:
             x = xs + i * bar_width
             ax.bar(
                 x, rescale(scores[perm], min_points, max_points),
-                bar_width, align="edge", label=r.__name__
+                bar_width, align="edge", label=r.display_name
             )
 
         ax.set_title("Comparison of scores between ranking methods")
@@ -402,7 +402,7 @@ class OutputCreator:
         fig, ax = plt.subplots()
         for k, r in enumerate(methods):
             if r in methods_to_plot and r not in (GoalDifferenceRanking, GoalsForRanking):
-                ax.plot(100 * xs, av_ys[:, k], "o-", label=r.__name__)
+                ax.plot(100 * xs, av_ys[:, k], "o-", label=r.display_name)
 
         ax.set_title(
             "Average swap distance between partial-season ranking\nand final "
@@ -457,6 +457,7 @@ def main():
             fc.run(name, outpath)
         except IndexError:
             fc.run_all(outpath)
+        plt.show()
 
 if __name__ == "__main__":
     sys.exit(main())

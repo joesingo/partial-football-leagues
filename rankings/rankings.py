@@ -166,6 +166,8 @@ class RankingMethod:
     """
     Base class for a method of ranking the clubs in a league
     """
+    display_name = None
+
     def rank(self, league: League) -> np.ndarray:
         raise NotImplementedError
 
@@ -187,6 +189,7 @@ class PointsRanking(RankingMethod):
     """
     Rank clubs based on league points
     """
+    display_name = "Points"
     def rank(self, league):
         return np.array([c.points for c in league.clubs])
 
@@ -194,6 +197,7 @@ class GoalDifferenceRanking(RankingMethod):
     """
     Rank clubs based on goal difference
     """
+    display_name = "Goal difference"
     def rank(self, league: League):
         return np.array([c.goal_difference for c in league.clubs])
 
@@ -201,6 +205,7 @@ class GoalsForRanking(RankingMethod):
     """
     Rank clubs based on goals scored
     """
+    display_name = "Goals for"
     def rank(self, league: League):
         return np.array([c.goals_for for c in league.clubs])
 
@@ -208,6 +213,7 @@ class AveragePointsRanking(RankingMethod):
     """
     Rank by average points across the games played so far
     """
+    display_name = "Average points"
     def rank(self, league):
         return np.array([
             c.points / c.played if c.played > 0 else 0
@@ -286,10 +292,13 @@ class TournamentRanking(RankingMethod):
         return False
 
 class ScoresRanking(TournamentRanking):
+    display_name = "Scores"
+
     def _rank(self, A):
         return self.get_average_scores(A)
 
 class MaximumLikelihood(TournamentRanking):
+    display_name = "Maximum likelihood"
     convergence_threshold = 0.000001
     max_iterations = 1000
 
@@ -320,6 +329,8 @@ class MaximumLikelihood(TournamentRanking):
         return x - np.sum(x) / n
 
 class Neustadtl(TournamentRanking):
+    display_name = "Neustadtl"
+
     def _rank(self, A):
         _, m, _ = self.get_matches(A)
         s = self.get_average_scores(A)
@@ -328,6 +339,8 @@ class Neustadtl(TournamentRanking):
         return A_hat @ s
 
 class FairBets(TournamentRanking):
+    display_name = "Fair bets"
+
     def _rank(self, A):
         _, _, n = self.get_matches(A)
         losses = A.T @ np.ones((n,))
@@ -344,6 +357,8 @@ class FairBets(TournamentRanking):
         return x / sum(x)
 
 class Buchholz(TournamentRanking):
+    display_name = "Buchholz"
+
     def _rank(self, A):
         M, m, _ = self.get_matches(A)
         M_bar = (M.T / m).T
@@ -351,6 +366,8 @@ class Buchholz(TournamentRanking):
         return M_bar @ s + s
 
 class RecursivePerformance(TournamentRanking):
+    display_name = "Recursive performance"
+
     def _rank(self, A):
         M, m, n = self.get_matches(A)
         s = self.get_average_scores(A)
@@ -363,6 +380,8 @@ class RecursivePerformance(TournamentRanking):
         return x - const
 
 class RecursiveBuchholz(TournamentRanking):
+    display_name = "Recursive Buchholz"
+
     def _rank(self, A):
         M, m, n = self.get_matches(A)
         s = self.get_average_scores(A)
@@ -374,6 +393,8 @@ class RecursiveBuchholz(TournamentRanking):
         return x - const
 
 class GeneralisedRowSum(TournamentRanking):
+    display_name = "Generalised row sum"
+
     def _rank(self, A):
         M, m, n = self.get_matches(A)
         m_hat = np.max(M)
