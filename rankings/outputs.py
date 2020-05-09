@@ -410,7 +410,7 @@ class OutputCreator:
         )
         ax.set_xlabel("Percentage through season")
         ax.set_ylabel("Average swap distance")
-        fig.legend()
+        fig.legend(loc="upper right", bbox_to_anchor=(0.9, 0.8))
         fig.tight_layout()
         with (outdir / "graph.png").open("wb") as f:
             fig.savefig(f, format="png")
@@ -457,7 +457,6 @@ def main():
             fc.run(name, outpath)
         except IndexError:
             fc.run_all(outpath)
-        plt.show()
 
 if __name__ == "__main__":
     sys.exit(main())
