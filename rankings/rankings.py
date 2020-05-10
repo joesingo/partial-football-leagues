@@ -213,7 +213,7 @@ class AveragePointsRanking(RankingMethod):
     """
     Rank by average points across the games played so far
     """
-    display_name = "Average points"
+    display_name = "PPG"
     def rank(self, league):
         return np.array([
             c.points / c.played if c.played > 0 else 0
