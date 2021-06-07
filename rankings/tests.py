@@ -9,7 +9,7 @@ import numpy as np
 
 from rankings import *
 from outputs import rescale
-from conversions import csv_to_fixtures
+from providers import CSVProvider
 from utils import kendall_tau_distance
 
 def test_ranking_methods():
@@ -163,8 +163,18 @@ def test_rescale():
         assert np.all(rescale(xs, mn, mx) == exp), f"failure for {xs}"
 
 def test_csv_conversion():
+    provider = CSVProvider(
+        "the-date-of-the-game",
+        ("%d/%m/%y", "%d/%m/%Y"),
+        "team-that-played-at-home",
+        "team-that-played-away",
+        "goals-for-the-home-team",
+        "goals-for-the-away-team",
+    )
     csv_lines = [
-        "Div,Date,HomeTeam,AwayTeam,FTHG,FTAG",
+        "Blah,the-date-of-the-game,team-that-played-at-home,"
+        "team-that-played-away,goals-for-the-home-team,"
+        "goals-for-the-away-team",
         "_,05/05/2020,Joe FC,Bob United,4,0",
         "_,05/05/2020,Bill FC,Dave Albion,1,2",
         "_,12/05/2020,Bill FC,Joe FC,3,4",
@@ -174,7 +184,7 @@ def test_csv_conversion():
     buf = StringIO()
     buf.write("\n".join(csv_lines))
     buf.seek(0)
-    fixtures = csv_to_fixtures(buf)
+    fixtures = provider.csv_to_fixtures(buf)
     assert len(fixtures.matches_by_date) == 3
     w1, w2, w3 = fixtures.matches_by_date
     assert w1 == [

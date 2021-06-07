@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 from rankings import *
 from utils import listify, kendall_tau_distance
-from conversions import csv_to_fixtures
+from providers import football_data_provider
 
 HERE = path.abspath(path.dirname(__file__))
 DATA_PATH = Path(HERE).parent / "data"
@@ -46,7 +46,7 @@ def get_fixtures(division: int, year: int):
     year_string = f"{y_start:0>2}{y_end:0>2}"
     csv_path = CSV_PATH / f"{year_string}_e{division}.csv"
     with csv_path.open(encoding="latin_1") as f:
-        yield csv_to_fixtures(f)
+        yield football_data_provider.csv_to_fixtures(f)
 
 def all_subclasses(cls):
     for child in cls.__subclasses__():
