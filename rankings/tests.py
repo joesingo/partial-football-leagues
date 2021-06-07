@@ -9,7 +9,7 @@ import numpy as np
 
 from rankings import *
 from outputs import rescale
-from providers import CSVProvider
+from providers import CSVProvider, DateFormatType
 from utils import kendall_tau_distance
 
 def test_ranking_methods():
@@ -163,14 +163,17 @@ def test_rescale():
         assert np.all(rescale(xs, mn, mx) == exp), f"failure for {xs}"
 
 def test_csv_conversion():
-    provider = CSVProvider(
-        "the-date-of-the-game",
-        ("%d/%m/%y", "%d/%m/%Y"),
-        "team-that-played-at-home",
-        "team-that-played-away",
-        "goals-for-the-home-team",
-        "goals-for-the-away-team",
-    )
+    class DummyProvider(CSVProvider):
+        date_field = "the-date-of-the-game"
+        date_format_type = DateFormatType.STRPTIME
+        date_formats = ("%d/%m/%y", "%d/%m/%Y")
+        home_team_name_field = "team-that-played-at-home"
+        away_team_name_field = "team-that-played-away"
+        home_team_goals_field = "goals-for-the-home-team"
+        away_team_goals_field = "goals-for-the-away-team"
+
+    provider = DummyProvider()
+
     csv_lines = [
         "Blah,the-date-of-the-game,team-that-played-at-home,"
         "team-that-played-away,goals-for-the-home-team,"
