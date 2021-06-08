@@ -3,6 +3,7 @@ TODO:
 
 test tournament -> club ranking method
 """
+from datetime import datetime
 from io import StringIO
 
 import numpy as np
@@ -190,14 +191,19 @@ def test_csv_conversion():
     fixtures = provider.csv_to_fixtures(buf)
     assert len(fixtures.matches_by_date) == 3
     w1, w2, w3 = fixtures.matches_by_date
+    fifth = datetime(year=2020, month=5, day=5)
+    twelth = datetime(year=2020, month=5, day=12)
+    thirteenth = datetime(year=2020, month=5, day=13)
     assert w1 == [
-        Match(home="Joe FC", away="Bob United", result=(4, 0)),
-        Match(home="Bill FC", away="Dave Albion", result=(1, 2))
+        Match(home="Joe FC", away="Bob United", result=(4, 0), date=fifth),
+        Match(home="Bill FC", away="Dave Albion", result=(1, 2), date=fifth)
     ]
-    assert w2 == [Match(home="Bill FC", away="Joe FC", result=(3, 4))]
+    assert w2 == [
+        Match(home="Bill FC", away="Joe FC", result=(3, 4), date=twelth)
+    ]
     assert w3 == [
-        Match(home="Dave Albion", away="Bob United", result=(4, 5)),
-        Match(home="AFC Steve", away="Joe FC", result=(0, 9))
+        Match(home="Dave Albion", away="Bob United", result=(4, 5), date=thirteenth),
+        Match(home="AFC Steve", away="Joe FC", result=(0, 9), date=thirteenth)
     ]
 
 def test_reducible():

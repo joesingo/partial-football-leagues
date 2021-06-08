@@ -1,3 +1,4 @@
+from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple
 import itertools
@@ -15,6 +16,7 @@ class Match:
     home: str
     away: str
     result: Tuple[int, int]
+    date: datetime = None
 
 @dataclass
 class Fixtures:

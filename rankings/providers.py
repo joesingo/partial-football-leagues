@@ -47,7 +47,7 @@ class CSVProvider:
                 home_goals = int(row[self.home_team_goals_field])
                 away_goals = int(row[self.away_team_goals_field])
                 result = (home_goals, away_goals)
-                m = Match(home=home, away=away, result=result)
+                m = Match(home=home, away=away, result=result, date=date)
                 current_batch.append(m)
             if current_batch:
                 yield current_batch
