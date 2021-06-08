@@ -199,7 +199,7 @@ class PremierLeagueCovid(OutputCreator):
                 }
 
         name_to_id = {c.name: c.club_id for c in self.league.clubs}
-        for match in self.fixtures.all_matches():
+        for match in self.fixtures.matches:
             i = name_to_id[match.home]
             j = name_to_id[match.away]
             values[(i, j)] = {"bg": "white", "text": ""}

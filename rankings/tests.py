@@ -34,20 +34,24 @@ def test_league():
     a = "team a"
     b = "team b"
     c = "the team of c"
+    d1 = datetime(year=2021, month=6, day=8)
+    d2 = datetime(year=2031, month=6, day=8)
+    d3 = datetime(year=2041, month=6, day=8)
     mbd = [
         [
-            Match(home=a, away=b, result=[1, 1])
+            Match(home=a, away=b, result=[1, 1], date=d1)
         ],
         [
-            Match(home=a, away=c, result=[1, 4]),
-            Match(home=b, away=c, result=[4, 4])
+            Match(home=a, away=c, result=[1, 4], date=d2),
+            Match(home=b, away=c, result=[4, 4], date=d2)
         ],
         [
-            Match(home=c, away=b, result=[2, 3])
+            Match(home=c, away=b, result=[2, 3], date=d3)
         ],
     ]
-    fixtures = Fixtures(matches_by_date=mbd)
-    assert fixtures.all_matches() == mbd[0] + mbd[1] + mbd[2]
+    matches = mbd[0] + mbd[1] + mbd[2]
+    fixtures = Fixtures(matches)
+    assert fixtures.matches_by_date == mbd
     assert fixtures.num_dates == 3
     # test fixture subsetting
     half = fixtures.partial(0.5)
@@ -114,9 +118,7 @@ def test_league():
     ]))
 
 def test_league_club_names():
-    fixtures = Fixtures(matches_by_date=[[
-        Match(home="a", away="b", result=[1, 1])
-    ]])
+    fixtures = Fixtures([Match(home="a", away="b", result=[1, 1])])
     l1 = League(fixtures)
     l2 = League(fixtures, club_names=["a", "b", "c"])
 
@@ -148,7 +150,7 @@ def test_ordinal_ranking():
         def rank(self, _):
             return np.array([10,11,12,13])
 
-    league = League(Fixtures(matches_by_date=[]), club_names=["a","b","c","d"])
+    league = League(Fixtures(matches=[]), club_names=["a","b","c","d"])
     expected = ["b", "d", "c", "a"]
     ranking = MyRankingMethod().ordinal_ranking(
         league, tie_breakers=[MyTieBreaker()]
@@ -175,14 +177,15 @@ def test_csv_conversion():
 
     provider = DummyProvider()
 
+    # note: dates are out of order
     csv_lines = [
         "Blah,the-date-of-the-game,team-that-played-at-home,"
         "team-that-played-away,goals-for-the-home-team,"
         "goals-for-the-away-team",
+        "_,13/05/2020,Dave Albion,Bob United,4,5",
         "_,05/05/2020,Joe FC,Bob United,4,0",
         "_,05/05/2020,Bill FC,Dave Albion,1,2",
         "_,12/05/2020,Bill FC,Joe FC,3,4",
-        "_,13/05/2020,Dave Albion,Bob United,4,5",
         "_,13/05/2020,AFC Steve,Joe FC,0,9",
     ]
     buf = StringIO()

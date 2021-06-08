@@ -5,6 +5,7 @@ import itertools
 import math
 import operator
 
+from cached_property import cached_property
 import numpy as np
 import numpy.linalg as linalg
 from sympy import Matrix
@@ -20,12 +21,23 @@ class Match:
 
 @dataclass
 class Fixtures:
-    matches_by_date: List[List[Match]]
+    matches: List[Match]
 
+    @cached_property
     @listify
-    def all_matches(self) -> List[Match]:
-        for matches in self.matches_by_date:
-            yield from matches
+    def matches_by_date(self) -> List[List[Match]]:
+        sorted_matches = sorted(self.matches, key=operator.attrgetter("date"))
+        current_date = None
+        current_batch = []
+        for match in sorted_matches:
+            if match.date != current_date:
+                current_date = match.date
+                if current_batch:
+                    yield current_batch
+                    current_batch = []
+            current_batch.append(match)
+        if current_batch:
+            yield current_batch
 
     def partial(self, t: float):
         """
@@ -33,7 +45,9 @@ class Fixtures:
         through the season, according to the parameter t in [0, 1]
         """
         n = math.floor(t * len(self.matches_by_date))
-        return Fixtures(matches_by_date=self.matches_by_date[:n])
+        mbd = self.matches_by_date[:n]
+        all_matches = [m for batch in mbd for m in batch]
+        return Fixtures(all_matches)
 
     @property
     def num_dates(self):
@@ -91,7 +105,7 @@ class League:
     def __init__(self, fixtures: Fixtures, abbreviations=None,
                  club_names=None):
         abbreviations = abbreviations or {}
-        matches = fixtures.all_matches()
+        matches = fixtures.matches
 
         self.clubs = []
         # build list of clubs
