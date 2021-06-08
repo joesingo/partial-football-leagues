@@ -143,11 +143,11 @@ def test_ordinal_ranking():
     d = Club(name="d FC", club_id=3)
 
     class MyRankingMethod(RankingMethod):
-        def rank(self, _):
+        def rank(self, _, **kwargs):
             return np.array([1,4,1,3])
 
     class MyTieBreaker(RankingMethod):
-        def rank(self, _):
+        def rank(self, _, **kwargs):
             return np.array([10,11,12,13])
 
     league = League(Fixtures(matches=[]), club_names=["a","b","c","d"])
@@ -230,3 +230,26 @@ def test_kendall_tau_distance():
     l2 = ["c", "d", "a", "b", "e"]
     # swaps are {a, c}, {a, d}, {b, c}, {b, d}, so distance should be 4
     assert kendall_tau_distance(l1, l2) == 4
+
+def test_merge_fixtures():
+    d1 = datetime(year=2021, month=6, day=8)
+    d2 = datetime(year=2031, month=6, day=8)
+    d3 = datetime(year=2041, month=6, day=8)
+
+    m1_1 = Match(home="a", away="b", result=(4, 1), date=d1)
+    m1_2 = Match(home="c", away="d", result=(2, 3), date=d2)
+    m1_3 = Match(home="d", away="a", result=(0, 0), date=d3)
+
+    m2_1 = Match(home="z", away="y", result=(3, 4), date=d1)
+    m2_2 = Match(home="u", away="v", result=(10, 11), date=d3)
+
+    f1 = Fixtures(matches=[m1_1, m1_2, m1_3])
+    f2 = Fixtures(matches=[m2_1, m2_2])
+
+    merged = Fixtures.merge([f1, f2])
+    mbd = merged.matches_by_date
+    assert mbd == [
+        [m1_1, m2_1],
+        [m1_2],
+        [m1_3, m2_2]
+    ]

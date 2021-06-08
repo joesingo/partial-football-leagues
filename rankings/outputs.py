@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from rankings import *
 from utils import listify, kendall_tau_distance
 from providers import FootballDataProvider, FootyStatsProvider
+from abbreviations import INTL_ABBREVIATIONS, PREMIER_ABBREVIATIONS
 
 HERE = path.abspath(path.dirname(__file__))
 DATA_PATH = Path(HERE).parent / "data"
@@ -27,8 +28,8 @@ def get_premier_fixtures(division: int, year: int):
         yield FootballDataProvider().csv_to_fixtures(f)
 
 @contextmanager
-def get_intl_fixtures():
-    with (INTL_CSV_PATH / "uefa-nations.csv").open() as f:
+def get_intl_fixtures(csv_path):
+    with csv_path.open() as f:
         yield FootyStatsProvider().csv_to_fixtures(f)
 
 def rescale(xs, min_val, max_val):
@@ -54,6 +55,16 @@ class output:
         return func
 
 class OutputCreator:
+    special_methods = [
+        PointsRanking,
+        AveragePointsRanking,
+        MaximumLikelihood,
+        Neustadtl,
+        RecursivePerformance,
+        FairBets
+    ]
+    require_irreducible = True
+
     def __init__(self):
         pass
 
@@ -75,6 +86,53 @@ class OutputCreator:
             mode = "wb" if getattr(method, "binary", False) else "w"
             with p.open(mode) as outfile:
                 method(outfile)
+
+    @output(ext="html")
+    def ordinal_ranking_table(self, outfile):
+        r_methods = self.special_methods
+        rankings = [
+            r().ordinal_ranking(self.league,
+                                require_irreducible=self.require_irreducible)
+            for r in r_methods
+        ]
+        points_ranks = {c.name: i for i, c in enumerate(rankings[0])}
+
+        def get_html_lines():
+            # todo: make a new method to wrap creation of HTML table?
+            yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
+                   "border:1px solid black;padding:0.5em;text-align:center;}</style>")
+            yield "<table class='ordinal_rankings'>"
+            yield "<thead>"
+            yield "<tr>"
+            yield "<th></th>"
+            for r in r_methods:
+                yield f"<th>{r.display_name}</th>"
+            yield "</tr>"
+            yield "</thead>"
+            yield "<tbody>"
+
+            for i, clubs in enumerate(zip(*rankings)):
+                yield "<tr>"
+                yield f"<th>{i + 1}</th>"
+                for club in clubs:
+                    yield f"<td>"
+                    diff = points_ranks[club.name] - i
+                    display_name = club.abbrev or club.name
+                    if diff != 0:
+                        yield f"<b>{display_name}</b>"
+                    else:
+                        yield display_name
+                    if diff > 0:
+                        yield f" <span style='color: green'>(+{diff})</span>"
+                    elif diff < 0:
+                        yield f" <span style='color: red'>(-{-diff})</span>"
+                    yield "</td>"
+                yield "</tr>"
+            yield "</tbody>"
+            yield "</table>"
+
+        for line in get_html_lines():
+            outfile.write(line + "\n")
 
     def tournament_table(self, league):
         n = league.num_clubs
@@ -139,43 +197,11 @@ class OutputCreator:
         yield "</table>"
 
 class PremierLeagueCovid(OutputCreator):
-    special_methods = [
-        PointsRanking,
-        AveragePointsRanking,
-        MaximumLikelihood,
-        Neustadtl,
-        RecursivePerformance,
-        FairBets
-    ]
-
-    ABBREVIATIONS = {
-        "Arsenal": "ARS",
-        "Aston Villa": "AVL",
-        "Bournemouth": "BOU",
-        "Brighton": "BHA",
-        "Burnley": "BUR",
-        "Chelsea": "CHE",
-        "Crystal Palace": "CRY",
-        "Everton": "EVE",
-        "Leicester": "LEI",
-        "Liverpool": "LIV",
-        "Man City": "MCI",
-        "Man United": "MUN",
-        "Newcastle": "NEW",
-        "Norwich": "NOR",
-        "Sheffield United": "SHU",
-        "Southampton": "SOU",
-        "Tottenham": "TOT",
-        "Watford": "WAT",
-        "West Ham": "WHU",
-        "Wolves": "WOL",
-    }
-
     def __init__(self, fixtures):
         super().__init__()
         self.fixtures = fixtures
-        self.league = League(self.fixtures, self.ABBREVIATIONS)
-        self.goal_league = GoalBasedLeague(self.fixtures, self.ABBREVIATIONS)
+        self.league = League(self.fixtures, PREMIER_ABBREVIATIONS)
+        self.goal_league = GoalBasedLeague(self.fixtures, PREMIER_ABBREVIATIONS)
 
     @output(ext="html")
     def tournament_points_based(self, outfile):
@@ -251,49 +277,6 @@ class PremierLeagueCovid(OutputCreator):
             ax.plot(xs[sort], ys[sort], "o-", label=r.display_name)
 
         fig.legend()
-
-    @output(ext="html")
-    def ordinal_ranking_table(self, outfile):
-        r_methods = self.special_methods
-        rankings = [r().ordinal_ranking(self.league) for r in r_methods]
-        points_ranks = {c.name: i for i, c in enumerate(rankings[0])}
-
-        def get_html_lines():
-            # todo: make a new method to wrap creation of HTML table?
-            yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
-                   "border:1px solid black;padding:0.5em;text-align:center;}</style>")
-            yield "<table class='ordinal_rankings'>"
-            yield "<thead>"
-            yield "<tr>"
-            yield "<th></th>"
-            for r in r_methods:
-                yield f"<th>{r.display_name}</th>"
-            yield "</tr>"
-            yield "</thead>"
-            yield "<tbody>"
-
-            for i, clubs in enumerate(zip(*rankings)):
-                yield "<tr>"
-                yield f"<th>{i + 1}</th>"
-                for club in clubs:
-                    yield f"<td>"
-                    diff = points_ranks[club.name] - i
-                    display_name = club.abbrev or club.name
-                    if diff != 0:
-                        yield f"<b>{display_name}</b>"
-                    else:
-                        yield display_name
-                    if diff > 0:
-                        yield f" <span style='color: green'>(+{diff})</span>"
-                    elif diff < 0:
-                        yield f" <span style='color: red'>(-{-diff})</span>"
-                    yield "</td>"
-                yield "</tr>"
-            yield "</tbody>"
-            yield "</table>"
-
-        for line in get_html_lines():
-            outfile.write(line + "\n")
 
     @output(binary=True, ext="png")
     def scores_versus_points(self, outfile):
@@ -443,11 +426,20 @@ class PremierLeagueCovid(OutputCreator):
         ax.set_xticks(years[::2])
 
 class InternationalLeague(OutputCreator):
+    require_irreducible = False
 
-    def __init__(self, fixtures):
-        self.fixtures = fixtures
-        self.league = League(self.fixtures)
-        self.goal_league = GoalBasedLeague(self.fixtures)
+    def __init__(self, fixture_list):
+        self.fixtures = Fixtures.merge(fixture_list)
+        self.league = League(self.fixtures, INTL_ABBREVIATIONS)
+        self.goal_league = GoalBasedLeague(self.fixtures, INTL_ABBREVIATIONS)
+
+        for batch in self.fixtures.matches_by_date:
+            date = batch[0].date
+            d = date.strftime("%d-%m-%Y")
+            print(f"{d}:")
+            for match in batch:
+                hg, ag = match.result
+                print(f"\t{match.home} vs {match.away}: {hg} - {ag}")
 
     @output(ext="html")
     def tournament_points_based(self, outfile):
@@ -458,7 +450,6 @@ class InternationalLeague(OutputCreator):
     def tournament_goals_based(self, outfile):
         for line in self.tournament_table(self.goal_league):
             outfile.write(line)
-
 
 def usage():
     print(f"usage: {sys.argv[0]} OUTPUT_DIR SUITE [METHOD]", file=sys.stderr)
@@ -486,8 +477,11 @@ def main():
                 fc.run_all(outpath)
 
     elif suite == "intl":
-        with get_intl_fixtures() as fixtures:
-            fc = InternationalLeague(fixtures)
+        uefa_path = INTL_CSV_PATH / "uefa-nations.csv"
+        wc_path = INTL_CSV_PATH / "world-cup-europe-quals.csv"
+        g = get_intl_fixtures
+        with g(uefa_path) as uefa, g(wc_path) as wc:
+            fc = InternationalLeague([uefa, wc])
             if method is not None:
                 fc.run(method, outpath)
             else:

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict, Optional, List, Tuple
@@ -52,6 +53,11 @@ class Fixtures:
     @property
     def num_dates(self):
         return len(self.matches_by_date)
+
+    @classmethod
+    def merge(cls, fixtures_list: List[Fixtures]) -> Fixtures:
+        matches = list(itertools.chain(*map(operator.attrgetter("matches"), fixtures_list)))
+        return cls(matches=matches)
 
 @dataclass
 class Club:
@@ -184,17 +190,20 @@ class RankingMethod:
     """
     display_name = None
 
-    def rank(self, league: League) -> np.ndarray:
+    def rank(self, league: League, **kwargs) -> np.ndarray:
         raise NotImplementedError
 
-    def ordinal_ranking(self, league: League, tie_breakers=None) -> List[Club]:
+    def ordinal_ranking(self, league: League, tie_breakers=None,
+                        require_irreducible=True) -> List[Club]:
+
         tie_breakers = tie_breakers or DEFAULT_TIE_BREAKERS
         ranking_methods = [self] + tie_breakers
         # construct a matrix of scores: entry i,j is the score for club j in
         # ranking method i
         all_scores = np.zeros((len(ranking_methods), league.num_clubs))
         for i, r in enumerate(ranking_methods):
-            all_scores[i, :] = r.rank(league)
+            all_scores[i, :] = r.rank(league,
+                                      require_irreducible=require_irreducible)
         return sorted(
             league.clubs,
             key=lambda c: tuple(all_scores[:, c.club_id]),
@@ -214,7 +223,7 @@ class PointsRanking(RankingMethod):
     Rank clubs based on league points
     """
     display_name = "Points"
-    def rank(self, league):
+    def rank(self, league, **kwargs):
         return np.array([c.points for c in league.clubs])
 
 class GoalDifferenceRanking(RankingMethod):
@@ -222,7 +231,7 @@ class GoalDifferenceRanking(RankingMethod):
     Rank clubs based on goal difference
     """
     display_name = "Goal difference"
-    def rank(self, league: League):
+    def rank(self, league: League, **kwargs):
         return np.array([c.goal_difference for c in league.clubs])
 
 class GoalsForRanking(RankingMethod):
@@ -230,7 +239,7 @@ class GoalsForRanking(RankingMethod):
     Rank clubs based on goals scored
     """
     display_name = "Goals for"
-    def rank(self, league: League):
+    def rank(self, league: League, **kwargs):
         return np.array([c.goals_for for c in league.clubs])
 
 class AveragePointsRanking(RankingMethod):
@@ -238,7 +247,7 @@ class AveragePointsRanking(RankingMethod):
     Rank by average points across the games played so far
     """
     display_name = "PPG"
-    def rank(self, league):
+    def rank(self, league, **kwargs):
         return np.array([
             c.points / c.played if c.played > 0 else 0
             for c in league.clubs
@@ -248,8 +257,8 @@ class TournamentRanking(RankingMethod):
     """
     Base class for ranking methods operating solely on the tournament matrix
     """
-    def rank(self, league):
-        if self.is_reducible(league.results_matrix):
+    def rank(self, league, require_irreducible=True):
+        if require_irreducible and self.is_reducible(league.results_matrix):
             raise ValueError("tournament matrix is reducible")
         return self._rank(league.results_matrix)
 
