@@ -8,7 +8,7 @@ import numpy as np
 import numpy.linalg as linalg
 from sympy import Matrix
 
-from utils import listify
+from utils import listify, all_subclasses
 
 @dataclass(eq=True)
 class Match:
@@ -184,6 +184,14 @@ class RankingMethod:
             key=lambda c: tuple(all_scores[:, c.club_id]),
             reverse=True
         )
+
+    @classmethod
+    @listify
+    def get_ranking_methods(cls):
+        for r in all_subclasses(cls):
+            if r not in (TournamentRanking,):
+                yield r
+
 
 class PointsRanking(RankingMethod):
     """

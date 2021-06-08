@@ -9,49 +9,27 @@ import matplotlib.pyplot as plt
 
 from rankings import *
 from utils import listify, kendall_tau_distance
-from providers import FootballDataProvider
+from providers import FootballDataProvider, FootyStatsProvider
 
 HERE = path.abspath(path.dirname(__file__))
 DATA_PATH = Path(HERE).parent / "data"
-CSV_PATH = DATA_PATH / "football-data-co-uk" / "england"
+PREMIER_CSV_PATH = DATA_PATH / "football-data-co-uk" / "england"
+INTL_CSV_PATH = DATA_PATH / "footystats-org"
 IMAGES_PATH = DATA_PATH / "images"
 
-ABBREVIATIONS = {
-    "Arsenal": "ARS",
-    "Aston Villa": "AVL",
-    "Bournemouth": "BOU",
-    "Brighton": "BHA",
-    "Burnley": "BUR",
-    "Chelsea": "CHE",
-    "Crystal Palace": "CRY",
-    "Everton": "EVE",
-    "Leicester": "LEI",
-    "Liverpool": "LIV",
-    "Man City": "MCI",
-    "Man United": "MUN",
-    "Newcastle": "NEW",
-    "Norwich": "NOR",
-    "Sheffield United": "SHU",
-    "Southampton": "SOU",
-    "Tottenham": "TOT",
-    "Watford": "WAT",
-    "West Ham": "WHU",
-    "Wolves": "WOL",
-}
-
 @contextmanager
-def get_fixtures(division: int, year: int):
+def get_premier_fixtures(division: int, year: int):
     y_start = year % 100
     y_end = (y_start + 1) % 100
     year_string = f"{y_start:0>2}{y_end:0>2}"
-    csv_path = CSV_PATH / f"{year_string}_e{division}.csv"
+    csv_path = PREMIER_CSV_PATH / f"{year_string}_e{division}.csv"
     with csv_path.open(encoding="latin_1") as f:
         yield FootballDataProvider().csv_to_fixtures(f)
 
-def all_subclasses(cls):
-    for child in cls.__subclasses__():
-        yield child
-        yield from all_subclasses(child)
+@contextmanager
+def get_intl_fixtures():
+    with (INTL_CSV_PATH / "uefa-nations.csv").open() as f:
+        yield FootyStatsProvider().csv_to_fixtures(f)
 
 def rescale(xs, min_val, max_val):
     """
@@ -76,19 +54,8 @@ class output:
         return func
 
 class OutputCreator:
-    special_methods = [
-        PointsRanking,
-        AveragePointsRanking,
-        MaximumLikelihood,
-        Neustadtl,
-        RecursivePerformance,
-        FairBets
-    ]
-
-    def __init__(self, fixtures, abbrevations=None):
-        self.fixtures = fixtures
-        self.league = League(self.fixtures, abbrevations)
-        self.goal_league = GoalBasedLeague(self.fixtures, abbrevations)
+    def __init__(self):
+        pass
 
     def run_all(self, outpath):
         for name, method in inspect.getmembers(self, inspect.ismethod):
@@ -108,16 +75,6 @@ class OutputCreator:
             mode = "wb" if getattr(method, "binary", False) else "w"
             with p.open(mode) as outfile:
                 method(outfile)
-
-    @output(ext="html")
-    def tournament_points_based(self, outfile):
-        for line in self.tournament_table(self.league):
-            outfile.write(line + "\n")
-
-    @output(ext="html")
-    def tournament_goals_based(self, outfile):
-        for line in self.tournament_table(self.goal_league):
-            outfile.write(line)
 
     def tournament_table(self, league):
         n = league.num_clubs
@@ -153,26 +110,6 @@ class OutputCreator:
                 }
         yield from self.html_matrix(labels, values)
 
-    @output(ext="html")
-    def fixtures_so_far(self, outfile):
-        labels = [c.abbrev or c.name for c in self.league.clubs]
-        values = {}
-        for i, c1 in enumerate(self.league.clubs):
-            for j, c2 in enumerate(self.league.clubs):
-                values[(i, j)] = {
-                    "bg": "red" if i != j else "#aaa",
-                    "text": ""
-                }
-
-        name_to_id = {c.name: c.club_id for c in self.league.clubs}
-        for match in self.fixtures.all_matches():
-            i = name_to_id[match.home]
-            j = name_to_id[match.away]
-            values[(i, j)] = {"bg": "white", "text": ""}
-
-        for line in self.html_matrix(labels, values):
-            outfile.write(line + "\n")
-
     def html_matrix(self, labels, values):
         yield ("<style type='text/css'>table{border-collapse:collapse;}td,th{"
                "border:1px solid black;padding:0.7em;text-align:center;}</style>")
@@ -201,11 +138,74 @@ class OutputCreator:
         yield "</tbody>"
         yield "</table>"
 
-    @listify
-    def get_ranking_methods(self):
-        for r in all_subclasses(RankingMethod):
-            if r not in (TournamentRanking,):
-                yield r
+class PremierLeagueCovid(OutputCreator):
+    special_methods = [
+        PointsRanking,
+        AveragePointsRanking,
+        MaximumLikelihood,
+        Neustadtl,
+        RecursivePerformance,
+        FairBets
+    ]
+
+    ABBREVIATIONS = {
+        "Arsenal": "ARS",
+        "Aston Villa": "AVL",
+        "Bournemouth": "BOU",
+        "Brighton": "BHA",
+        "Burnley": "BUR",
+        "Chelsea": "CHE",
+        "Crystal Palace": "CRY",
+        "Everton": "EVE",
+        "Leicester": "LEI",
+        "Liverpool": "LIV",
+        "Man City": "MCI",
+        "Man United": "MUN",
+        "Newcastle": "NEW",
+        "Norwich": "NOR",
+        "Sheffield United": "SHU",
+        "Southampton": "SOU",
+        "Tottenham": "TOT",
+        "Watford": "WAT",
+        "West Ham": "WHU",
+        "Wolves": "WOL",
+    }
+
+    def __init__(self, fixtures):
+        super().__init__()
+        self.fixtures = fixtures
+        self.league = League(self.fixtures, self.ABBREVIATIONS)
+        self.goal_league = GoalBasedLeague(self.fixtures, self.ABBREVIATIONS)
+
+    @output(ext="html")
+    def tournament_points_based(self, outfile):
+        for line in self.tournament_table(self.league):
+            outfile.write(line + "\n")
+
+    @output(ext="html")
+    def tournament_goals_based(self, outfile):
+        for line in self.tournament_table(self.goal_league):
+            outfile.write(line)
+
+    @output(ext="html")
+    def fixtures_so_far(self, outfile):
+        labels = [c.abbrev or c.name for c in self.league.clubs]
+        values = {}
+        for i, c1 in enumerate(self.league.clubs):
+            for j, c2 in enumerate(self.league.clubs):
+                values[(i, j)] = {
+                    "bg": "red" if i != j else "#aaa",
+                    "text": ""
+                }
+
+        name_to_id = {c.name: c.club_id for c in self.league.clubs}
+        for match in self.fixtures.all_matches():
+            i = name_to_id[match.home]
+            j = name_to_id[match.away]
+            values[(i, j)] = {"bg": "white", "text": ""}
+
+        for line in self.html_matrix(labels, values):
+            outfile.write(line + "\n")
 
     @output()
     def ordinal_rankings_versus_points_ranking(self, _):
@@ -332,7 +332,7 @@ class OutputCreator:
 
     @output(requires_dir=True)
     def historical_league_averages(self, outdir):
-        methods = self.get_ranking_methods()
+        methods = RankingMethod.get_ranking_methods()
 
         start_year = 1999
         end_year = 2018
@@ -357,7 +357,7 @@ class OutputCreator:
 
             for i, year in enumerate(years):
                 print(f"{year}-{year + 1} season")
-                with get_fixtures(division, year) as fixtures:
+                with get_premier_fixtures(division, year) as fixtures:
                     # get end-of-season results according to normal points
                     # system
                     full_league = League(fixtures)
@@ -433,7 +433,7 @@ class OutputCreator:
         for division, label in divisions.items():
             match_days = np.zeros((len(years),))
             for i, year in enumerate(years):
-                with get_fixtures(division, year) as fixtures:
+                with get_premier_fixtures(division, year) as fixtures:
                     match_days[i] = fixtures.num_dates
             ax.plot(years, match_days, label=label)
         fig.legend()
@@ -442,21 +442,60 @@ class OutputCreator:
         ax.set_ylabel("Number of matchdays")
         ax.set_xticks(years[::2])
 
+class InternationalLeague(OutputCreator):
+
+    def __init__(self, fixtures):
+        self.fixtures = fixtures
+        self.league = League(self.fixtures)
+        self.goal_league = GoalBasedLeague(self.fixtures)
+
+    @output(ext="html")
+    def tournament_points_based(self, outfile):
+        for line in self.tournament_table(self.league):
+            outfile.write(line + "\n")
+
+    @output(ext="html")
+    def tournament_goals_based(self, outfile):
+        for line in self.tournament_table(self.goal_league):
+            outfile.write(line)
+
+
+def usage():
+    print(f"usage: {sys.argv[0]} OUTPUT_DIR SUITE [METHOD]", file=sys.stderr)
+
 def main():
     try:
         output_dir = sys.argv[1]
+        suite = sys.argv[2]
     except IndexError:
-        print(f"usage: {sys.argv[0]} OUTPUT_DIR [METHOD]", file=sys.stderr)
-        return 1
+        usage()
+        sys.exit(1)
+    try:
+        method = sys.argv[3]
+    except IndexError:
+        method = None
 
-    with get_fixtures(0, 2019) as fixtures:
-        fc = OutputCreator(fixtures, abbrevations=ABBREVIATIONS)
-        outpath = Path(output_dir)
-        try:
-            name = sys.argv[2]
-            fc.run(name, outpath)
-        except IndexError:
-            fc.run_all(outpath)
+    outpath = Path(output_dir)
+
+    if suite == "premier":
+        with get_premier_fixtures(0, 2019) as fixtures:
+            fc = PremierLeagueCovid(fixtures)
+            if method is not None:
+                fc.run(method, outpath)
+            else:
+                fc.run_all(outpath)
+
+    elif suite == "intl":
+        with get_intl_fixtures() as fixtures:
+            fc = InternationalLeague(fixtures)
+            if method is not None:
+                fc.run(method, outpath)
+            else:
+                fc.run_all(outpath)
+
+    else:
+        print(f"unknown suite '{suite}'", file=sys.stderr)
+        sys.exit(1)
 
 if __name__ == "__main__":
     sys.exit(main())

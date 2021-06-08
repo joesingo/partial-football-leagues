@@ -25,3 +25,8 @@ def kendall_tau_distance(l1: list, l2: list) -> int:
         if (i < j and i2 > j2) or (i > j and i2 < j2):
             tau += 1
     return tau
+
+def all_subclasses(cls):
+    for child in cls.__subclasses__():
+        yield child
+        yield from all_subclasses(child)
