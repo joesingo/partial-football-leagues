@@ -28,11 +28,11 @@ To set up and run the code:
 python3 -m venv venv
 . venv/bin/activate
 ```
-1. Install Python dependencies:
+2. Install Python dependencies:
 ```shell
 pip install -r requirements.txt
 ```
-1. Run:
+3. Run:
 ```shell
 # e.g. premier league
 mkdir rankings
