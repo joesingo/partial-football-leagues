@@ -7,15 +7,22 @@ from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
 
-from rankings import *
-from utils import listify, kendall_tau_distance
-from providers import FootballDataProvider, FootyStatsProvider
+from rankings import (
+    PointsRanking, AveragePointsRanking, MaximumLikelihood, Neustadtl,
+    RecursivePerformance, FairBets, League, GoalBasedLeague, RankingMethod,
+    GoalDifferenceRanking, GoalsForRanking, Fixtures,
+)
+from utils import kendall_tau_distance
+from providers import (
+    FootballDataProvider, FootyStatsProvider, FixturedownloadProvider
+)
 from abbreviations import INTL_ABBREVIATIONS, PREMIER_ABBREVIATIONS
 
 HERE = path.abspath(path.dirname(__file__))
 DATA_PATH = Path(HERE).parent / "data"
 PREMIER_CSV_PATH = DATA_PATH / "football-data-co-uk" / "england"
-INTL_CSV_PATH = DATA_PATH / "footystats-org"
+FOOTYSTATS_PATH = DATA_PATH / "footystats-org"
+FIXTUREDOWNLOAD_PATH = DATA_PATH / "fixturedownload.com"
 IMAGES_PATH = DATA_PATH / "images"
 
 @contextmanager
@@ -27,10 +34,17 @@ def get_premier_fixtures(division: int, year: int):
     with csv_path.open(encoding="latin_1") as f:
         yield FootballDataProvider().csv_to_fixtures(f)
 
+
 @contextmanager
-def get_intl_fixtures(csv_path):
+def get_footystats_fixtures(csv_path):
     with csv_path.open() as f:
         yield FootyStatsProvider().csv_to_fixtures(f)
+
+@contextmanager
+def get_fixturedownload_fixtures(csv_path):
+    with csv_path.open() as f:
+        yield FixturedownloadProvider().csv_to_fixtures(f)
+
 
 def rescale(xs, min_val, max_val):
     """
@@ -41,10 +55,12 @@ def rescale(xs, min_val, max_val):
     normed = (xs - min_x) / (max_x - min_x)
     return min_val + (max_val - min_val) * normed
 
+
 class output:
     """
     Decorator to mark a method as being a output generation method
     """
+
     def __init__(self, **kwargs):
         self.kwargs = kwargs
 
@@ -53,6 +69,7 @@ class output:
         for k, v in self.kwargs.items():
             setattr(func, k, v)
         return func
+
 
 class OutputCreator:
     special_methods = [
@@ -115,7 +132,7 @@ class OutputCreator:
                 yield "<tr>"
                 yield f"<th>{i + 1}</th>"
                 for club in clubs:
-                    yield f"<td>"
+                    yield "<td>"
                     diff = points_ranks[club.name] - i
                     display_name = club.abbrev or club.name
                     if diff != 0:
@@ -196,12 +213,14 @@ class OutputCreator:
         yield "</tbody>"
         yield "</table>"
 
+
 class PremierLeagueCovid(OutputCreator):
     def __init__(self, fixtures):
         super().__init__()
         self.fixtures = fixtures
         self.league = League(self.fixtures, PREMIER_ABBREVIATIONS)
-        self.goal_league = GoalBasedLeague(self.fixtures, PREMIER_ABBREVIATIONS)
+        self.goal_league = GoalBasedLeague(
+            self.fixtures, PREMIER_ABBREVIATIONS)
 
     @output(ext="html")
     def tournament_points_based(self, outfile):
@@ -425,6 +444,7 @@ class PremierLeagueCovid(OutputCreator):
         ax.set_ylabel("Number of matchdays")
         ax.set_xticks(years[::2])
 
+
 class InternationalLeague(OutputCreator):
     require_irreducible = False
 
@@ -451,8 +471,10 @@ class InternationalLeague(OutputCreator):
         for line in self.tournament_table(self.goal_league):
             outfile.write(line)
 
+
 def usage():
     print(f"usage: {sys.argv[0]} OUTPUT_DIR SUITE [METHOD]", file=sys.stderr)
+
 
 def main():
     try:
@@ -477,11 +499,13 @@ def main():
                 fc.run_all(outpath)
 
     elif suite == "intl":
-        uefa_path = INTL_CSV_PATH / "uefa-nations.csv"
-        wc_path = INTL_CSV_PATH / "world-cup-europe-quals.csv"
-        g = get_intl_fixtures
-        with g(uefa_path) as uefa, g(wc_path) as wc:
-            fc = InternationalLeague([uefa, wc])
+        uefa_path = FOOTYSTATS_PATH / "uefa-nations-2022.csv"
+        wc_path = FOOTYSTATS_PATH / "world-cup-europe-quals-2022.csv"
+        euro_path = FIXTUREDOWNLOAD_PATH / "euro-2020.csv"
+        g = get_footystats_fixtures
+        h = get_fixturedownload_fixtures
+        with g(uefa_path) as uefa, g(wc_path) as wc, h(euro_path) as euros:
+            fc = InternationalLeague([uefa, wc, euros])
             if method is not None:
                 fc.run(method, outpath)
             else:
@@ -490,6 +514,7 @@ def main():
     else:
         print(f"unknown suite '{suite}'", file=sys.stderr)
         sys.exit(1)
+
 
 if __name__ == "__main__":
     sys.exit(main())

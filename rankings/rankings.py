@@ -349,6 +349,8 @@ class MaximumLikelihood(TournamentRanking):
             for i in range(n):
                 w[i] = W[i] / sum(M[i, j] / (w[i] + w[j]) for j in range(n))
             w = w / np.sum(w)
+            if np.any(np.isnan(w)):
+                break
             diff = np.max(np.abs(w - old_w))
             if diff <= self.convergence_threshold:
                 break

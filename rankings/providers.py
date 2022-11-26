@@ -18,6 +18,7 @@ class CSVProvider:
     date_formats = None
     home_team_name_field = None
     away_team_name_field = None
+    result_field = None
     home_team_goals_field = None
     away_team_goals_field = None
 
@@ -35,8 +36,7 @@ class CSVProvider:
                 if not home or not away:
                     continue
                 date = self.parse_date(row[self.date_field])
-                home_goals = int(row[self.home_team_goals_field])
-                away_goals = int(row[self.away_team_goals_field])
+                home_goals, away_goals = self.get_result(row)
                 result = (home_goals, away_goals)
                 m = Match(home=home, away=away, result=result, date=date)
                 yield m
@@ -72,6 +72,22 @@ class CSVProvider:
         """
         return True
 
+    def get_result(self, row: dict) -> (int, int):
+        if self.result_field is not None:
+            result = row[self.result_field]
+            try:
+                home_goals, away_goals = result.split(" - ")
+            except ValueError:
+                raise RuntimeError(f"could not parse result '{result}'")
+            return int(home_goals), int(away_goals)
+
+        if (self.home_team_goals_field is not None
+                and self.away_team_goals_field is not None):
+            return (
+                int(row[self.home_team_goals_field]),
+                int(row[self.away_team_goals_field])
+            )
+
 class FootballDataProvider(CSVProvider):
     """
     For CSV data from football-data.co.uk
@@ -95,3 +111,11 @@ class FootyStatsProvider(CSVProvider):
 
     def row_is_valid(self, row):
         return row["status"] == "complete"
+
+class FixturedownloadProvider(CSVProvider):
+    date_field = "Date"
+    date_format_type = DateFormatType.STRPTIME
+    date_formats = ("%d/%m/%Y %H:%M",)
+    home_team_name_field = "Home Team"
+    away_team_name_field = "Away Team"
+    result_field = "Result"
