@@ -348,9 +348,9 @@ class MaximumLikelihood(TournamentRanking):
             old_w = np.array(w)
             for i in range(n):
                 w[i] = W[i] / sum(M[i, j] / (w[i] + w[j]) for j in range(n))
+                if w[i] == 0:
+                    w[i] = 0.001
             w = w / np.sum(w)
-            if np.any(np.isnan(w)):
-                break
             diff = np.max(np.abs(w - old_w))
             if diff <= self.convergence_threshold:
                 break
@@ -405,7 +405,7 @@ class RecursivePerformance(TournamentRanking):
 
     def _rank(self, A):
         M, m, n = self.get_matches(A)
-        s = self.get_average_scores(A)
+        s = np.maximum(self.get_average_scores(A), 0.001)
         c = -np.log((1 / s) - 1)
         c_hat = c - (np.dot(m, c) / np.sum(m))
         M_bar = (M.T / m).T

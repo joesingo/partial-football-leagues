@@ -105,10 +105,17 @@ class OutputCreator:
                 method(outfile)
 
     @output(ext="html")
-    def ordinal_ranking_table(self, outfile):
+    def ordinal_ranking_table_points_based(self, outfile):
+        self.ordinal_ranking_helper(outfile, self.league)
+
+    @output(ext="html")
+    def ordinal_ranking_table_goal_based(self, outfile):
+        self.ordinal_ranking_helper(outfile, self.goal_league)
+
+    def ordinal_ranking_helper(self, outfile, league):
         r_methods = self.special_methods
         rankings = [
-            r().ordinal_ranking(self.league,
+            r().ordinal_ranking(league,
                                 require_irreducible=self.require_irreducible)
             for r in r_methods
         ]
