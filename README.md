@@ -44,7 +44,7 @@ python rankings/output.py rankings premier
 The results are contained in CSV files in the `data` directory. At the time of
 writing, CSVs from [football-data.co.uk](http://www.football-data.co.uk),
 [footystats.org](http://www.footystats.org) and
-[fixturedownload.com](http://www.fixturedownload.com) are supported.
+[fixturedownload.com](https://fixturedownload.com/) are supported.
 
 To add support for a new CSV format, create a new subclass of `CSVProvider` in
 `rankings/providers.py` with the appropriate CSV header names defined as class
