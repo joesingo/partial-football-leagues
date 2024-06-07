@@ -518,6 +518,18 @@ def main():
             else:
                 fc.run_all(outpath)
 
+    elif suite == "intl2":
+        uefa_path = FOOTYSTATS_PATH / "uefa-nations-22-23.csv"
+        euro_path = FOOTYSTATS_PATH / "euro-quals-22-24.csv"
+        g = get_footystats_fixtures
+        h = get_fixturedownload_fixtures
+        with g(uefa_path) as uefa, g(euro_path) as euro:
+            fc = InternationalLeague([uefa, euro])
+            if method is not None:
+                fc.run(method, outpath)
+            else:
+                fc.run_all(outpath)
+
     else:
         print(f"unknown suite '{suite}'", file=sys.stderr)
         sys.exit(1)

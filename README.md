@@ -14,9 +14,12 @@ The main script at `rankings/output.py` runs the various ranking methods:
 usage: rankings/outputs.py OUTPUT_DIR SUITE [METHOD]
 ```
 
-At the time of writing, `SUITE` can be `premier` for the partial Premier League
-19/20 season, or `intl` for European international fixtures aggregated from the
-UEFA Nations 2022 league, 2022 world cup qualifiers, and Euro 2020.
+At the time of writing, `SUITE` can be:
+- `premier`, for the partial Premier League 19/20 season
+- `intl` for European international fixtures aggregated from the UEFA Nations
+  2022 league, 2022 world cup qualifiers, and Euro 2020
+- `intl2` for European international fixtures aggregated from the UEFA Nations
+  2023 league, and the Euro 2024 qualifiers
 
 The code provides the most up-to-date documentation on the outputs produced for
 each suite.
@@ -35,8 +38,8 @@ pip install -r requirements.txt
 3. Run:
 ```shell
 # e.g. premier league
-mkdir rankings
-python rankings/output.py rankings premier
+mkdir results
+python rankings/output.py results premier
 ```
 
 ## Adding new data
